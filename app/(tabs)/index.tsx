@@ -1,16 +1,27 @@
+import { useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { getItem } from '@/src/storage/AppStorage';
+import { STORAGE_KEYS } from '@/src/storage/keys';
 
 export default function HomeScreen() {
+  const [petName, setPetName] = useState('Pochi');
+
+  useEffect(() => {
+    getItem<string>(STORAGE_KEYS.PET_NAME).then((name) => {
+      if (name) setPetName(name);
+    });
+  }, []);
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <ThemedView style={styles.container}>
         <View style={styles.petArea}>
           <ThemedText style={styles.petEmoji}>🥚</ThemedText>
-          <ThemedText style={styles.petName}>Pochi</ThemedText>
+          <ThemedText style={styles.petName}>{petName}</ThemedText>
           <ThemedText style={styles.mood}>😴 Tired</ThemedText>
         </View>
 
@@ -23,7 +34,7 @@ export default function HomeScreen() {
             <ThemedText style={styles.buttonText}>🎯 Start Focus Session</ThemedText>
           </View>
           <View style={[styles.button, styles.buttonSecondary]}>
-            <ThemedText style={styles.buttonText}>🍎 Feed Pochi</ThemedText>
+            <ThemedText style={styles.buttonText}>🍎 Feed {petName}</ThemedText>
           </View>
         </View>
 
