@@ -1,6 +1,8 @@
 import { router } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
+  Animated,
+  Easing,
   KeyboardAvoidingView,
   Platform,
   StyleSheet,
@@ -58,16 +60,116 @@ export default function OnboardingScreen() {
           ))}
         </View>
 
-        {step === 'welcome' && <WelcomeStep onNext={goNext} />}
-        {step === 'name' && (
-          <NameStep petName={petName} onChange={setPetName} onNext={goNext} />
+        {step === 'welcome' && (
+          <StepWrapper key="welcome">
+            <WelcomeStep onNext={goNext} />
+          </StepWrapper>
         )}
-        {step === 'how-it-works' && <HowItWorksStep onNext={goNext} />}
+        {step === 'name' && (
+          <StepWrapper key="name">
+            <NameStep petName={petName} onChange={setPetName} onNext={goNext} />
+          </StepWrapper>
+        )}
+        {step === 'how-it-works' && (
+          <StepWrapper key="how-it-works">
+            <HowItWorksStep onNext={goNext} />
+          </StepWrapper>
+        )}
         {step === 'permissions' && (
-          <PermissionsStep onEnable={enablePermissions} onSkip={skipPermissions} />
+          <StepWrapper key="permissions">
+            <PermissionsStep onEnable={enablePermissions} onSkip={skipPermissions} />
+          </StepWrapper>
         )}
       </KeyboardAvoidingView>
     </SafeAreaView>
+  );
+}
+
+// ─── Step transition wrapper ──────────────────────────────────────────────────
+
+function StepWrapper({ children }: { children: React.ReactNode }) {
+  const opacity = useRef(new Animated.Value(0)).current;
+  const translateX = useRef(new Animated.Value(48)).current;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(opacity, {
+        toValue: 1,
+        duration: 280,
+        useNativeDriver: true,
+        easing: Easing.out(Easing.quad),
+      }),
+      Animated.spring(translateX, {
+        toValue: 0,
+        useNativeDriver: true,
+        damping: 22,
+        stiffness: 280,
+        mass: 0.8,
+      }),
+    ]).start();
+  }, []);
+
+  return (
+    <Animated.View style={[styles.flex, { opacity, transform: [{ translateX }] }]}>
+      {children}
+    </Animated.View>
+  );
+}
+
+// ─── Floating egg (Welcome) ───────────────────────────────────────────────────
+
+function FloatingEgg() {
+  const translateY = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(translateY, {
+          toValue: -14,
+          duration: 1600,
+          useNativeDriver: true,
+          easing: Easing.inOut(Easing.sin),
+        }),
+        Animated.timing(translateY, {
+          toValue: 0,
+          duration: 1600,
+          useNativeDriver: true,
+          easing: Easing.inOut(Easing.sin),
+        }),
+      ]),
+    ).start();
+  }, []);
+
+  return (
+    <Animated.Text style={[styles.petEmoji, { transform: [{ translateY }] }]}>
+      🥚
+    </Animated.Text>
+  );
+}
+
+// ─── Wiggling egg (Name step) ─────────────────────────────────────────────────
+
+function WigglingEgg({ trigger }: { trigger: string }) {
+  const rotate = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.sequence([
+      Animated.timing(rotate, { toValue: 1, duration: 70, useNativeDriver: true }),
+      Animated.timing(rotate, { toValue: -1, duration: 70, useNativeDriver: true }),
+      Animated.timing(rotate, { toValue: 0.6, duration: 70, useNativeDriver: true }),
+      Animated.timing(rotate, { toValue: 0, duration: 70, useNativeDriver: true }),
+    ]).start();
+  }, [trigger]);
+
+  const rotateStr = rotate.interpolate({
+    inputRange: [-1, 0, 1],
+    outputRange: ['-10deg', '0deg', '10deg'],
+  });
+
+  return (
+    <Animated.Text style={[styles.petEmoji, { transform: [{ rotate: rotateStr }] }]}>
+      🥚
+    </Animated.Text>
   );
 }
 
@@ -77,7 +179,7 @@ function WelcomeStep({ onNext }: { onNext: () => void }) {
   return (
     <View style={styles.step}>
       <View style={styles.center}>
-        <Text style={styles.petEmoji}>🥚</Text>
+        <FloatingEgg />
         <Text style={styles.heading}>Meet your new friend!</Text>
         <Text style={styles.subheading}>Your habits shape who they become</Text>
       </View>
@@ -98,7 +200,7 @@ function NameStep({
   return (
     <View style={styles.step}>
       <View style={styles.center}>
-        <Text style={styles.petEmoji}>🥚</Text>
+        <WigglingEgg trigger={petName} />
         <Text style={styles.heading}>What will you name me?</Text>
         <TextInput
           style={styles.nameInput}
@@ -123,26 +225,54 @@ function NameStep({
   );
 }
 
+const HOW_ITEMS = [
+  { emoji: '🍎', title: 'Feed me daily', desc: 'Tap to feed once a day' },
+  { emoji: '🎯', title: 'Focus with me', desc: 'I grow when you focus' },
+  { emoji: '📊', title: 'Watch me evolve', desc: 'The more you focus, the stronger I get' },
+] as const;
+
 function HowItWorksStep({ onNext }: { onNext: () => void }) {
-  const items = [
-    { emoji: '🍎', title: 'Feed me daily', desc: 'Tap to feed once a day' },
-    { emoji: '🎯', title: 'Focus with me', desc: 'I grow when you focus' },
-    { emoji: '📊', title: 'Watch me evolve', desc: 'The more you focus, the stronger I get' },
-  ];
+  const anim0 = useRef(new Animated.Value(0)).current;
+  const anim1 = useRef(new Animated.Value(0)).current;
+  const anim2 = useRef(new Animated.Value(0)).current;
+  const anims = [anim0, anim1, anim2];
+
+  useEffect(() => {
+    Animated.stagger(
+      150,
+      anims.map((anim) =>
+        Animated.timing(anim, {
+          toValue: 1,
+          duration: 380,
+          useNativeDriver: true,
+          easing: Easing.out(Easing.quad),
+        }),
+      ),
+    ).start();
+  }, []);
 
   return (
     <View style={styles.step}>
-      <Text style={[styles.heading, { marginBottom: 32 }]}>Here's how it works</Text>
+      <Text style={[styles.heading, styles.howHeading]}>Here's how it works</Text>
       <View style={styles.howItems}>
-        {items.map((item) => (
-          <View key={item.title} style={styles.howItem}>
-            <Text style={styles.howEmoji}>{item.emoji}</Text>
-            <View style={styles.howText}>
-              <Text style={styles.howTitle}>{item.title}</Text>
-              <Text style={styles.howDesc}>{item.desc}</Text>
-            </View>
-          </View>
-        ))}
+        {HOW_ITEMS.map((item, i) => {
+          const anim = anims[i];
+          const translateY = anim.interpolate({
+            inputRange: [0, 1],
+            outputRange: [24, 0],
+          });
+          return (
+            <Animated.View
+              key={item.title}
+              style={[styles.howItem, { opacity: anim, transform: [{ translateY }] }]}>
+              <Text style={styles.howEmoji}>{item.emoji}</Text>
+              <View style={styles.howText}>
+                <Text style={styles.howTitle}>{item.title}</Text>
+                <Text style={styles.howDesc}>{item.desc}</Text>
+              </View>
+            </Animated.View>
+          );
+        })}
       </View>
       <PrimaryButton label="Got it!" onPress={onNext} />
     </View>
@@ -156,10 +286,33 @@ function PermissionsStep({
   onEnable: () => void;
   onSkip: () => void;
 }) {
+  const pulse = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulse, {
+          toValue: 1.08,
+          duration: 900,
+          useNativeDriver: true,
+          easing: Easing.inOut(Easing.sin),
+        }),
+        Animated.timing(pulse, {
+          toValue: 1,
+          duration: 900,
+          useNativeDriver: true,
+          easing: Easing.inOut(Easing.sin),
+        }),
+      ]),
+    ).start();
+  }, []);
+
   return (
     <View style={styles.step}>
       <View style={styles.center}>
-        <Text style={styles.petEmoji}>📱</Text>
+        <Animated.Text style={[styles.petEmoji, { transform: [{ scale: pulse }] }]}>
+          📱
+        </Animated.Text>
         <Text style={styles.heading}>Want me to track your screen time too?</Text>
         <Text style={styles.subheading}>
           This helps me react to how much you use your phone.
@@ -187,13 +340,41 @@ function PrimaryButton({
   onPress: () => void;
   disabled?: boolean;
 }) {
+  const scale = useRef(new Animated.Value(1)).current;
+
+  function onPressIn() {
+    Animated.spring(scale, {
+      toValue: 0.96,
+      useNativeDriver: true,
+      damping: 20,
+      stiffness: 400,
+    }).start();
+  }
+
+  function onPressOut() {
+    Animated.spring(scale, {
+      toValue: 1,
+      useNativeDriver: true,
+      damping: 20,
+      stiffness: 400,
+    }).start();
+  }
+
   return (
     <TouchableOpacity
-      style={[styles.primaryButton, disabled && styles.primaryButtonDisabled]}
       onPress={onPress}
+      onPressIn={onPressIn}
+      onPressOut={onPressOut}
       disabled={disabled}
-      activeOpacity={0.8}>
-      <Text style={styles.primaryButtonText}>{label}</Text>
+      activeOpacity={1}>
+      <Animated.View
+        style={[
+          styles.primaryButton,
+          disabled && styles.primaryButtonDisabled,
+          { transform: [{ scale }] },
+        ]}>
+        <Text style={styles.primaryButtonText}>{label}</Text>
+      </Animated.View>
     </TouchableOpacity>
   );
 }
@@ -247,6 +428,10 @@ const styles = StyleSheet.create({
     color: '#11181C',
     textAlign: 'center',
   },
+  howHeading: {
+    marginTop: 8,
+    marginBottom: 0,
+  },
   subheading: {
     fontSize: 16,
     color: 'rgba(17,24,28,0.6)',
@@ -274,7 +459,7 @@ const styles = StyleSheet.create({
   howItems: {
     flex: 1,
     justifyContent: 'center',
-    gap: 28,
+    gap: 32,
   },
   howItem: {
     flexDirection: 'row',
