@@ -9,6 +9,30 @@ Format: `[Phase X · Session Y] — Description`
 
 ---
 
+## [Phase 2 · Session 5] — 2026-03-24
+
+### Added
+- `app/(tabs)/index.tsx` — full Home screen layout replacing Phase 1 placeholder:
+  - Time-of-day greeting + formatted date header
+  - Streak badge (`🔥 N day streak`) with `PetPalColors.streak` styling
+  - Pet emoji driven by `totalSessionsEver` → `getEvolutionStage()` → `EVOLUTION_CONFIG` (all 6 stages)
+  - Mood label + random daily message from `MOOD_CONFIG` per current mood
+  - XP progress bar showing sessions progress toward next evolution stage
+  - "Start Focus Session" button → navigates to `/(tabs)/focus`
+  - "Feed [Name]" button → navigates to `/feed`; white dot indicator shown when feed is available (20hr cooldown)
+  - Today's stats row: Focus time (minutes) | Sessions count | Personal best
+  - All data loaded in parallel via `Promise.all`; screen refreshes on focus via `useFocusEffect`
+- `app/feed.tsx` — placeholder feed screen for navigation wiring (full implementation in Phase 4, Session 14)
+- `src/constants/Colors.ts` — added `white: '#ffffff'` to `PetPalColors`
+
+### Changed
+- `app/_layout.tsx` — registered `feed` route in root Stack with `headerBackTitle: 'Home'`
+
+### Fixed
+- XP progress bar math: `nextStageMin` is now looked up directly from `EVOLUTION_CONFIG[nextStage].sessionsRequired` instead of being (incorrectly) derived from remaining session count, which caused the bar to always display as full
+
+---
+
 ## [Phase 1 · Session 4] — 2026-03-23
 
 ### Added

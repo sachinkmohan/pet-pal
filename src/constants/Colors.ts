@@ -37,6 +37,9 @@ export const PetPalColors = {
   textMuted: 'rgba(17,24,28,0.55)',
   textMutedDark: 'rgba(236,237,238,0.55)',
 
+  // Base
+  white: '#ffffff',
+
   // Tab bar
   tabActive: '#0a7ea4',
   tabInactive: '#687076',

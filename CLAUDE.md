@@ -31,6 +31,7 @@ eas build --platform android
 app/
   _layout.tsx          # Root Stack: checks onboarding on mount, controls SplashScreen
   onboarding.tsx       # Multi-step onboarding (4 steps via useState, no sub-routing)
+  feed.tsx             # Feed screen (placeholder → full impl in Phase 4); pushed from Home button
   (tabs)/
     _layout.tsx        # Bottom tab navigator (Home / Focus / Stats / Journey)
     index.tsx          # Home screen
@@ -81,6 +82,17 @@ Everything persisted uses `STORAGE_KEYS` — never use raw strings. All storage 
 - **Evolution:** Driven by `totalSessionsEver` (never resets). Thresholds: 0/10/25/50/100/200 sessions.
 - **Screen time:** Optional — app fully functional without `USAGE_STATS_ENABLED`. Never penalise mood if disabled.
 - **Pet never dies** — only reaches `sick` state. Always recoverable.
+
+### Screen data refresh pattern
+
+Use `useFocusEffect` from `expo-router` to reload storage data whenever a screen gains focus. This ensures the Home screen reflects changes made on other screens (Feed, Focus) when the user returns.
+
+```typescript
+// Correct pattern — useFocusEffect requires a stable (non-async) callback
+useFocusEffect(useCallback(() => { loadData(); }, [loadData]));
+```
+
+Note: this is one of the few places `useCallback` is load-bearing — `useFocusEffect` requires a stable reference to avoid re-registering on every render. The React Compiler rule still applies everywhere else.
 
 ### React Compiler
 
