@@ -66,15 +66,18 @@ function touchToValue(x: number, y: number): number {
 export function CircularSlider({ value, onChange }: Props) {
   const isDark = useColorScheme() === 'dark';
 
+  const onChangeRef = useRef(onChange);
+  onChangeRef.current = onChange;
+
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
       onMoveShouldSetPanResponder: () => true,
       onPanResponderGrant: (e) => {
-        onChange(touchToValue(e.nativeEvent.locationX, e.nativeEvent.locationY));
+        onChangeRef.current(touchToValue(e.nativeEvent.locationX, e.nativeEvent.locationY));
       },
       onPanResponderMove: (e) => {
-        onChange(touchToValue(e.nativeEvent.locationX, e.nativeEvent.locationY));
+        onChangeRef.current(touchToValue(e.nativeEvent.locationX, e.nativeEvent.locationY));
       },
     })
   ).current;
