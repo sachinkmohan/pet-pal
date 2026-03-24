@@ -15,10 +15,9 @@ import {
   getNextEvolutionStage,
   sessionsToNextEvolution,
 } from '@/src/constants/PetStates';
+import { FEED_COOLDOWN_MS, calculateMood } from '@/src/services/MoodService';
 import { getItem } from '@/src/storage/AppStorage';
 import { STORAGE_KEYS } from '@/src/storage/keys';
-
-const FEED_COOLDOWN_MS = 20 * 60 * 60 * 1000; // 20 hours
 
 function getGreeting(): string {
   const hour = new Date().getHours();
@@ -33,13 +32,6 @@ function getFormattedDate(): string {
     month: 'long',
     day: 'numeric',
   });
-}
-
-function deriveMood(sessionsToday: number, isFedToday: boolean): MoodState {
-  if (sessionsToday >= 2 && isFedToday) return 'thriving';
-  if (sessionsToday >= 1 && isFedToday) return 'happy';
-  if (isFedToday || sessionsToday >= 1) return 'okay';
-  return 'tired';
 }
 
 function pickDailyMessage(mood: MoodState): string {
@@ -59,10 +51,11 @@ export default function HomeScreen() {
   const [personalBest, setPersonalBest] = useState(0);
   const [totalSessionsEver, setTotalSessionsEver] = useState(0);
   const [lastFedTime, setLastFedTime] = useState<number | null>(null);
+  const [usageStatsEnabled, setUsageStatsEnabled] = useState(false);
   const [dailyMessage, setDailyMessage] = useState('');
 
   const loadData = useCallback(async () => {
-    const [name, streak, sessToday, focusTime, pb, totalSessions, fedTime] =
+    const [name, streak, sessToday, focusTime, pb, totalSessions, fedTime, statsEnabled] =
       await Promise.all([
         getItem<string>(STORAGE_KEYS.PET_NAME),
         getItem<number>(STORAGE_KEYS.CURRENT_STREAK),
@@ -71,11 +64,15 @@ export default function HomeScreen() {
         getItem<number>(STORAGE_KEYS.PERSONAL_BEST),
         getItem<number>(STORAGE_KEYS.TOTAL_SESSIONS_EVER),
         getItem<number>(STORAGE_KEYS.LAST_FED_TIME),
+        getItem<boolean>(STORAGE_KEYS.USAGE_STATS_ENABLED),
       ]);
 
     const sessions = sessToday ?? 0;
-    const isFed = fedTime !== null && Date.now() - fedTime < FEED_COOLDOWN_MS;
-    const mood = deriveMood(sessions, isFed);
+    const mood = calculateMood({
+      sessionsCompleted: sessions,
+      lastFedTime: fedTime,
+      screenTimeEnabled: statsEnabled ?? false,
+    });
 
     setPetName(name ?? 'Pochi');
     setCurrentStreak(streak ?? 0);
@@ -84,6 +81,7 @@ export default function HomeScreen() {
     setPersonalBest(pb ?? 0);
     setTotalSessionsEver(totalSessions ?? 0);
     setLastFedTime(fedTime);
+    setUsageStatsEnabled(statsEnabled ?? false);
     setDailyMessage(pickDailyMessage(mood));
   }, []);
 
@@ -92,9 +90,12 @@ export default function HomeScreen() {
   // Derived values
   const evolutionStage = getEvolutionStage(totalSessionsEver);
   const petEmoji = EVOLUTION_CONFIG[evolutionStage].emoji;
-  const isFedToday = lastFedTime !== null && Date.now() - lastFedTime < FEED_COOLDOWN_MS;
   const feedAvailable = lastFedTime === null || Date.now() - lastFedTime >= FEED_COOLDOWN_MS;
-  const mood = deriveMood(sessionsToday, isFedToday);
+  const mood = calculateMood({
+    sessionsCompleted: sessionsToday,
+    lastFedTime,
+    screenTimeEnabled: usageStatsEnabled,
+  });
   const moodConfig = MOOD_CONFIG[mood];
 
   // XP progress bar

@@ -55,6 +55,9 @@ src/
     PetStates.ts     # MoodState type, MOOD_CONFIG, EvolutionStage type, EVOLUTION_CONFIG,
                      # helpers: getEvolutionStage(), getNextEvolutionStage(), sessionsToNextEvolution()
     Colors.ts        # PetPalColors palette (primary, accent, mood colors, etc.)
+  services/
+    MoodService.ts   # calculateMood(MoodInput): MoodState — all 5 states, real-time calculation
+                     # also exports FEED_COOLDOWN_MS (20 hrs); import from here, never redefine
 ```
 
 Everything persisted uses `STORAGE_KEYS` — never use raw strings. All storage access goes through `AppStorage.ts` helpers which handle `JSON.parse/stringify` automatically.
@@ -78,7 +81,7 @@ Everything persisted uses `STORAGE_KEYS` — never use raw strings. All storage 
 
 - **Streak:** Both fed + ≥1 focus session required on the same day. Checked at midnight via `resetDailyDataIfNeeded()`.
 - **Feed cooldown:** 20 hours (not 24) — intentional habit-formation design.
-- **Mood:** Calculated in real-time after every session/feed via `MoodService` (to be built in Phase 2).
+- **Mood:** Calculated in real-time via `calculateMood()` in `src/services/MoodService.ts`. Call after every session completion and every feed. Pass `screenTimeHours` once `ScreenTimeService` is wired (Phase 6).
 - **Evolution:** Driven by `totalSessionsEver` (never resets). Thresholds: 0/10/25/50/100/200 sessions.
 - **Screen time:** Optional — app fully functional without `USAGE_STATS_ENABLED`. Never penalise mood if disabled.
 - **Pet never dies** — only reaches `sick` state. Always recoverable.

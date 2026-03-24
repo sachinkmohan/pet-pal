@@ -36,7 +36,6 @@ export default function RootLayout() {
         // Storage error — proceed to main app but log for debugging
         console.warn('Storage initialization failed:', e);
       } finally {
-      } finally {
         // Hide splash only after navigation is set
         SplashScreen.hideAsync();
       }
