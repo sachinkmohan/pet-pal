@@ -33,7 +33,9 @@ export default function RootLayout() {
           router.replace('/onboarding');
         }
       } catch (e) {
-        // Storage error — proceed to main app
+        // Storage error — proceed to main app but log for debugging
+        console.warn('Storage initialization failed:', e);
+      } finally {
       } finally {
         // Hide splash only after navigation is set
         SplashScreen.hideAsync();
