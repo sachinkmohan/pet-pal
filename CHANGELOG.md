@@ -9,6 +9,27 @@ Format: `[Phase X · Session Y] — Description`
 
 ---
 
+## [Phase 2 · Session 6] — 2026-03-24
+
+### Added
+- `src/services/MoodService.ts` — new service with `calculateMood(input: MoodInput): MoodState` and exported `FEED_COOLDOWN_MS` constant (20 hrs)
+  - All 5 mood states implemented in priority order: `thriving → happy → okay → sick → tired`
+  - `thriving` requires sessions ≥ 2 + fed + screen time ok (or disabled)
+  - `sick` requires `lastFedTime !== null` + 2+ days neglect + 0 sessions (null guard prevents new users starting sick)
+  - `screenTimeEnabled` flag gates screen-time penalty; `screenTimeHours` defaults to 0 until `ScreenTimeService` is wired in Phase 6
+
+### Changed
+- `app/(tabs)/index.tsx` — replaced inline `deriveMood` with `calculateMood` from `MoodService`
+  - `FEED_COOLDOWN_MS` now imported from `MoodService` instead of defined locally
+  - Added `usageStatsEnabled` state; loaded from `STORAGE_KEYS.USAGE_STATS_ENABLED` and passed to `calculateMood`
+  - Both `loadData` (for daily message pick) and render section (for live mood label) call `calculateMood`
+
+### Fixed
+- `app/_layout.tsx` — removed duplicate `} finally {` block (empty stray block introduced by linter; caused a syntax error)
+- `app/(tabs)/index.tsx` — replaced HTML entities `&ldquo;`/`&rdquo;` with `\u201C`/`\u201D` template string (HTML entities render literally in React Native)
+
+---
+
 ## [Phase 2 · Session 5] — 2026-03-24
 
 ### Added
