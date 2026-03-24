@@ -7,6 +7,29 @@ Format: `[Phase X · Session Y] — Description`
 
 ## [Unreleased]
 
+## [Phase 3 · Session 10] — 2026-03-24
+
+### Added
+- `components/circular-countdown.tsx` — depleting circular countdown timer:
+  - Single `setInterval` on mount (empty dep array); functional `setRemaining` update avoids stale state
+  - `onCompleteRef` keeps the `onComplete` callback fresh without restarting the interval
+  - Full-circle arc uses two half-arcs to avoid degenerate SVG path at 360°
+  - `formatTime` zero-pads MM:SS with `fontVariant: ['tabular-nums']` for stable layout
+  - Matches `CircularSlider` geometry (SIZE=240, TRACK_RADIUS=96, STROKE_WIDTH=16)
+  - Props: `totalSeconds: number`, `onComplete: () => void`
+
+### Changed
+- `app/(tabs)/focus.tsx` — wired full setup → active session → completion flow:
+  - Added `sessionActive`, `sessionComplete`, `completedDuration` states
+  - Start button transitions to active session view: `CircularCountdown` + pet encouragement hint + Give Up button
+  - Give Up button calls `handleGiveUp` → clears `sessionActive`, returns to setup
+  - `handleSessionComplete` persists session on completion: calls `resetDailyDataIfNeeded()`, increments and persists `TOTAL_SESSIONS_EVER` / `SESSIONS_TODAY` / `FOCUS_TIME_TODAY`, calls `calculateMood()` with fresh values, refreshes pet emoji in case an evolution threshold was crossed
+  - Completion modal: dark-mode aware card, `PetPalColors.scrim` backdrop, pet emoji + duration summary + "Awesome!" dismiss button
+  - `useFocusEffect` cleanup cancels active session on blur (not on next focus) — `CircularCountdown` cannot continue offscreen or fire `handleSessionComplete` after navigation
+  - `sessionComplete` is NOT reset by `useFocusEffect` — modal persists until explicitly dismissed
+
+---
+
 ## [Phase 3 · Session 9] — 2026-03-24
 
 ### Added
