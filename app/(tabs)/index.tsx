@@ -144,7 +144,7 @@ export default function HomeScreen() {
             </ThemedText>
             {dailyMessage !== '' && (
               <ThemedText style={[styles.dailyMessage, { color: textMuted }]}>
-                &ldquo;{dailyMessage}&rdquo;
+                {`\u201C${dailyMessage}\u201D`}
               </ThemedText>
             )}
           </View>
