@@ -7,6 +7,26 @@ Format: `[Phase X · Session Y] — Description`
 
 ## [Unreleased]
 
+## [Phase 2 · Session 8] — 2026-03-24
+
+### Added
+- `components/evolution-celebration.tsx` — modal overlay shown when pet evolves:
+  - Spring scale + opacity entrance animation via `Animated` API
+  - Confetti emoji strip, large pet emoji, stage name, unlock reward text
+  - Shareable card with generated text: `"[Name] just evolved into [Stage]! 🎉 \n[N] focus sessions completed."`
+  - Share button (uses RN `Share.share()`; failure silently ignored — card text visible)
+  - Dismiss button writes confirmed stage to storage, preventing retrigger
+  - Dark-mode aware card background via `useColorScheme()`
+- `src/constants/Colors.ts` — added `scrim: 'rgba(0,0,0,0.6)'` token for modal backdrops
+
+### Changed
+- `app/(tabs)/index.tsx` — wires evolution detection and celebration:
+  - Loads `STORAGE_KEYS.EVOLUTION_STAGE` in `loadData` alongside other data
+  - Validates stored stage against `EVOLUTION_ORDER` before comparing (prevents infinite retrigger on corrupt/unknown value)
+  - Sets `celebrationStage` state when computed stage differs from stored stage
+  - `handleEvolutionDismiss` writes new stage to storage (with try/catch) then clears state
+  - `EvolutionCelebration` conditionally mounted (not just hidden) — fresh animation on every evolution
+
 ---
 
 ## [Phase 2 · Session 7] — 2026-03-24

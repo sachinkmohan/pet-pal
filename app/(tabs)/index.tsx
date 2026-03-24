@@ -3,6 +3,7 @@ import { useCallback, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { EvolutionCelebration } from '@/components/evolution-celebration';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { XpProgressBar } from '@/components/xp-progress-bar';
@@ -10,12 +11,14 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { PetPalColors } from '@/src/constants/Colors';
 import {
   EVOLUTION_CONFIG,
+  EVOLUTION_ORDER,
+  EvolutionStage,
   MOOD_CONFIG,
   MoodState,
   getEvolutionStage,
 } from '@/src/constants/PetStates';
 import { FEED_COOLDOWN_MS, calculateMood } from '@/src/services/MoodService';
-import { getItem } from '@/src/storage/AppStorage';
+import { getItem, setItem } from '@/src/storage/AppStorage';
 import { STORAGE_KEYS } from '@/src/storage/keys';
 
 function getGreeting(): string {
@@ -52,9 +55,10 @@ export default function HomeScreen() {
   const [lastFedTime, setLastFedTime] = useState<number | null>(null);
   const [usageStatsEnabled, setUsageStatsEnabled] = useState(false);
   const [dailyMessage, setDailyMessage] = useState('');
+  const [celebrationStage, setCelebrationStage] = useState<EvolutionStage | null>(null);
 
   const loadData = useCallback(async () => {
-    const [name, streak, sessToday, focusTime, pb, totalSessions, fedTime, statsEnabled] =
+    const [name, streak, sessToday, focusTime, pb, totalSessions, fedTime, statsEnabled, storedStage] =
       await Promise.all([
         getItem<string>(STORAGE_KEYS.PET_NAME),
         getItem<number>(STORAGE_KEYS.CURRENT_STREAK),
@@ -64,8 +68,10 @@ export default function HomeScreen() {
         getItem<number>(STORAGE_KEYS.TOTAL_SESSIONS_EVER),
         getItem<number>(STORAGE_KEYS.LAST_FED_TIME),
         getItem<boolean>(STORAGE_KEYS.USAGE_STATS_ENABLED),
+        getItem<string>(STORAGE_KEYS.EVOLUTION_STAGE),
       ]);
 
+    const total = totalSessions ?? 0;
     const sessions = sessToday ?? 0;
     const mood = calculateMood({
       sessionsCompleted: sessions,
@@ -73,18 +79,39 @@ export default function HomeScreen() {
       screenTimeEnabled: statsEnabled ?? false,
     });
 
+    // Detect evolution: stored stage differs from computed stage.
+    // Validate storedStage is a known EvolutionStage before comparing —
+    // a corrupt/unknown value must not cause an infinite retrigger loop.
+    const computedStage = getEvolutionStage(total);
+    const isKnownStage = storedStage !== null &&
+      (EVOLUTION_ORDER as string[]).includes(storedStage);
+    if (isKnownStage && storedStage !== computedStage) {
+      setCelebrationStage(computedStage);
+    }
+
     setPetName(name ?? 'Pochi');
     setCurrentStreak(streak ?? 0);
     setSessionsToday(sessions);
     setFocusTimeToday(focusTime ?? 0);
     setPersonalBest(pb ?? 0);
-    setTotalSessionsEver(totalSessions ?? 0);
+    setTotalSessionsEver(total);
     setLastFedTime(fedTime);
     setUsageStatsEnabled(statsEnabled ?? false);
     setDailyMessage(pickDailyMessage(mood));
   }, []);
 
   useFocusEffect(useCallback(() => { loadData(); }, [loadData]));
+
+  async function handleEvolutionDismiss() {
+    if (celebrationStage) {
+      try {
+        await setItem(STORAGE_KEYS.EVOLUTION_STAGE, celebrationStage);
+      } catch {
+        // Storage write failed — dismiss anyway; celebration will retrigger on next open
+      }
+    }
+    setCelebrationStage(null);
+  }
 
   // Derived values
   const evolutionStage = getEvolutionStage(totalSessionsEver);
@@ -201,6 +228,17 @@ export default function HomeScreen() {
           </View>
         </ScrollView>
       </ThemedView>
+
+      {/* Evolution celebration overlay */}
+      {celebrationStage && (
+        <EvolutionCelebration
+          visible
+          petName={petName}
+          newStage={celebrationStage}
+          totalSessions={totalSessionsEver}
+          onDismiss={handleEvolutionDismiss}
+        />
+      )}
     </SafeAreaView>
   );
 }
