@@ -73,6 +73,7 @@ Domain components built so far (use these rather than re-implementing inline):
 - `xp-progress-bar.tsx` — `<XpProgressBar totalSessionsEver={n} currentStage={stage} />` — renders labelled XP bar; handles legendary max state automatically
 - `evolution-card.tsx` — `<EvolutionCard stage={stage} status={'completed'|'current'|'locked'} showConnector? />` — single timeline entry with connector line support
 - `evolution-celebration.tsx` — `<EvolutionCelebration visible petName={s} newStage={stage} totalSessions={n} onDismiss={fn} />` — modal overlay; conditionally mount (don't pass `visible=false`); dismiss handler must write new stage to `STORAGE_KEYS.EVOLUTION_STAGE` to prevent retrigger
+- `circular-slider.tsx` — `<CircularSlider value={n} onChange={fn} />` — circular drag picker for focus duration (1–60 min); uses `react-native-svg` + `PanResponder`; self-contained (SIZE=240); renders SVG arc + thumb + duration label overlay
 
 ### Theming
 
