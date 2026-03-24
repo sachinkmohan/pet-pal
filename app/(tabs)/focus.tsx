@@ -10,8 +10,10 @@ import { ThemedView } from '@/components/themed-view';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { PetPalColors } from '@/src/constants/Colors';
 import { EVOLUTION_CONFIG, getEvolutionStage } from '@/src/constants/PetStates';
-import { getItem } from '@/src/storage/AppStorage';
+import { calculateMood } from '@/src/services/MoodService';
+import { getItem, setItem } from '@/src/storage/AppStorage';
 import { STORAGE_KEYS } from '@/src/storage/keys';
+import { resetDailyDataIfNeeded } from '@/src/storage/seedData';
 
 const PRESETS = [5, 15, 30, 60] as const;
 
@@ -40,10 +42,11 @@ export default function FocusScreen() {
   }, []);
 
   useFocusEffect(useCallback(() => {
-    // Reset active session when returning to this tab (session cannot survive navigation).
-    // sessionComplete is NOT reset here — the completion modal must be dismissed explicitly.
-    setSessionActive(false);
     loadData();
+    // Cancel any active session on blur — CircularCountdown must not continue offscreen
+    // and cannot call handleSessionComplete after the screen loses focus.
+    // sessionComplete is NOT reset here — the modal must be dismissed explicitly.
+    return () => setSessionActive(false);
   }, [loadData]));
 
   function handleStart() {
@@ -54,11 +57,46 @@ export default function FocusScreen() {
     setSessionActive(false);
   }
 
-  function handleSessionComplete() {
+  async function handleSessionComplete() {
+    // 1. Guard against midnight crossing during a long session
+    await resetDailyDataIfNeeded();
+
+    // 2. Read current counters
+    const [totalSessions, sessionsToday, focusTimeToday, lastFedTime, statsEnabled] =
+      await Promise.all([
+        getItem<number>(STORAGE_KEYS.TOTAL_SESSIONS_EVER),
+        getItem<number>(STORAGE_KEYS.SESSIONS_TODAY),
+        getItem<number>(STORAGE_KEYS.FOCUS_TIME_TODAY),
+        getItem<number>(STORAGE_KEYS.LAST_FED_TIME),
+        getItem<boolean>(STORAGE_KEYS.USAGE_STATS_ENABLED),
+      ]);
+
+    const newTotal = (totalSessions ?? 0) + 1;
+    const newSessionsToday = (sessionsToday ?? 0) + 1;
+    const newFocusTime = (focusTimeToday ?? 0) + duration;
+
+    // 3. Persist incremented values
+    await Promise.all([
+      setItem(STORAGE_KEYS.TOTAL_SESSIONS_EVER, newTotal),
+      setItem(STORAGE_KEYS.SESSIONS_TODAY, newSessionsToday),
+      setItem(STORAGE_KEYS.FOCUS_TIME_TODAY, newFocusTime),
+    ]);
+
+    // 4. Recalculate mood — called after every session per domain rules
+    //    (screenTimeHours wired once ScreenTimeService is available in Phase 6)
+    calculateMood({
+      sessionsCompleted: newSessionsToday,
+      lastFedTime: lastFedTime ?? null,
+      screenTimeEnabled: statsEnabled ?? false,
+    });
+
+    // 5. Refresh pet emoji in case this session crossed an evolution threshold
+    const stage = getEvolutionStage(newTotal);
+    setPetEmoji(EVOLUTION_CONFIG[stage].emoji);
+
     setCompletedDuration(duration);
     setSessionActive(false);
     setSessionComplete(true);
-    // Storage writes wired in Session 12
   }
 
   function handleDone() {
