@@ -1,8 +1,9 @@
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { CircularCountdown } from '@/components/circular-countdown';
 import { CircularSlider } from '@/components/circular-slider';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -17,10 +18,16 @@ const PRESETS = [5, 15, 30, 60] as const;
 export default function FocusScreen() {
   const isDark = useColorScheme() === 'dark';
 
+  // Setup state
   const [duration, setDuration] = useState(25);
   const [musicEnabled, setMusicEnabled] = useState(false);
   const [petEmoji, setPetEmoji] = useState('🥚');
   const [petName, setPetName] = useState('Pochi');
+
+  // Session state
+  const [sessionActive, setSessionActive] = useState(false);
+  const [sessionComplete, setSessionComplete] = useState(false);
+  const [completedDuration, setCompletedDuration] = useState(0);
 
   const loadData = useCallback(async () => {
     const [name, totalSessions] = await Promise.all([
@@ -32,109 +39,185 @@ export default function FocusScreen() {
     setPetName(name ?? 'Pochi');
   }, []);
 
-  useFocusEffect(useCallback(() => { loadData(); }, [loadData]));
+  useFocusEffect(useCallback(() => {
+    // Reset active session when returning to this tab (session cannot survive navigation).
+    // sessionComplete is NOT reset here — the completion modal must be dismissed explicitly.
+    setSessionActive(false);
+    loadData();
+  }, [loadData]));
+
+  function handleStart() {
+    setSessionActive(true);
+  }
+
+  function handleGiveUp() {
+    setSessionActive(false);
+  }
+
+  function handleSessionComplete() {
+    setCompletedDuration(duration);
+    setSessionActive(false);
+    setSessionComplete(true);
+    // Storage writes wired in Session 12
+  }
+
+  function handleDone() {
+    setSessionComplete(false);
+  }
 
   // Theme-aware colors
   const chipBg = isDark ? PetPalColors.surfaceDark : PetPalColors.primaryLight;
   const toggleBg = isDark ? PetPalColors.surfaceDark : PetPalColors.surface;
   const textMuted = isDark ? PetPalColors.textMutedDark : PetPalColors.textMuted;
+  const cardBg = isDark ? PetPalColors.backgroundDark : PetPalColors.background;
 
   return (
     <SafeAreaView style={styles.safeArea}>
       <ThemedView style={styles.container}>
-        <ScrollView
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.scrollContent}
-          alwaysBounceVertical={false}
-        >
-          {/* Title */}
-          <ThemedText style={styles.title}>Focus Session</ThemedText>
+        {/* ── Active session view ── */}
+        {sessionActive ? (
+          <View style={styles.sessionContainer}>
+            <ThemedText style={styles.title}>Stay focused!</ThemedText>
 
-          {/* Circular Slider */}
-          <View style={styles.sliderWrapper}>
-            <CircularSlider value={duration} onChange={setDuration} />
-          </View>
+            <CircularCountdown
+              totalSeconds={duration * 60}
+              onComplete={handleSessionComplete}
+            />
 
-          {/* Preset chips */}
-          <View style={styles.presets}>
-            {PRESETS.map((min) => {
-              const isActive = duration === min;
-              return (
-                <Pressable
-                  key={min}
-                  style={({ pressed }) => [
-                    styles.chip,
-                    {
-                      backgroundColor: isActive ? PetPalColors.primary : chipBg,
-                      opacity: pressed ? 0.8 : 1,
-                    },
-                  ]}
-                  onPress={() => setDuration(min)}
-                >
-                  <ThemedText
-                    style={[
-                      styles.chipText,
-                      { color: isActive ? PetPalColors.white : PetPalColors.primary },
-                    ]}
-                  >
-                    {min}m
-                  </ThemedText>
-                </Pressable>
-              );
-            })}
-          </View>
-
-          {/* Pet preview */}
-          <View style={styles.petPreview}>
-            <ThemedText style={styles.petEmoji}>{petEmoji}</ThemedText>
-            <ThemedText style={[styles.petCaption, { color: textMuted }]}>
-              {petName} is ready to focus!
+            <ThemedText style={[styles.sessionHint, { color: textMuted }]}>
+              {petName} is cheering you on {petEmoji}
             </ThemedText>
-          </View>
 
-          {/* Music toggle */}
-          <Pressable
-            style={[styles.musicRow, { backgroundColor: toggleBg }]}
-            onPress={() => setMusicEnabled((prev) => !prev)}
+            <Pressable
+              style={({ pressed }) => [
+                styles.giveUpButton,
+                { opacity: pressed ? 0.7 : 1 },
+              ]}
+              onPress={handleGiveUp}
+            >
+              <ThemedText style={[styles.giveUpText, { color: textMuted }]}>
+                Give up
+              </ThemedText>
+            </Pressable>
+          </View>
+        ) : (
+          /* ── Setup view ── */
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={styles.scrollContent}
+            alwaysBounceVertical={false}
           >
-            <ThemedText style={styles.musicIcon}>🌧️</ThemedText>
-            <View style={styles.musicLabelGroup}>
-              <ThemedText style={styles.musicLabel}>Rain sounds</ThemedText>
-              <ThemedText style={[styles.musicSub, { color: textMuted }]}>
-                Plays during session
+            <ThemedText style={styles.title}>Focus Session</ThemedText>
+
+            <View style={styles.sliderWrapper}>
+              <CircularSlider value={duration} onChange={setDuration} />
+            </View>
+
+            <View style={styles.presets}>
+              {PRESETS.map((min) => {
+                const isActive = duration === min;
+                return (
+                  <Pressable
+                    key={min}
+                    style={({ pressed }) => [
+                      styles.chip,
+                      {
+                        backgroundColor: isActive ? PetPalColors.primary : chipBg,
+                        opacity: pressed ? 0.8 : 1,
+                      },
+                    ]}
+                    onPress={() => setDuration(min)}
+                  >
+                    <ThemedText
+                      style={[
+                        styles.chipText,
+                        { color: isActive ? PetPalColors.white : PetPalColors.primary },
+                      ]}
+                    >
+                      {min}m
+                    </ThemedText>
+                  </Pressable>
+                );
+              })}
+            </View>
+
+            <View style={styles.petPreview}>
+              <ThemedText style={styles.petEmoji}>{petEmoji}</ThemedText>
+              <ThemedText style={[styles.petCaption, { color: textMuted }]}>
+                {petName} is ready to focus!
               </ThemedText>
             </View>
-            <View
-              style={[
-                styles.togglePill,
-                { backgroundColor: musicEnabled ? PetPalColors.primary : PetPalColors.border },
-              ]}
+
+            <Pressable
+              style={[styles.musicRow, { backgroundColor: toggleBg }]}
+              onPress={() => setMusicEnabled((prev) => !prev)}
             >
+              <ThemedText style={styles.musicIcon}>🌧️</ThemedText>
+              <View style={styles.musicLabelGroup}>
+                <ThemedText style={styles.musicLabel}>Rain sounds</ThemedText>
+                <ThemedText style={[styles.musicSub, { color: textMuted }]}>
+                  Plays during session
+                </ThemedText>
+              </View>
               <View
                 style={[
-                  styles.toggleThumb,
-                  { transform: [{ translateX: musicEnabled ? 18 : 2 }] },
+                  styles.togglePill,
+                  { backgroundColor: musicEnabled ? PetPalColors.primary : PetPalColors.border },
                 ]}
-              />
-            </View>
-          </Pressable>
+              >
+                <View
+                  style={[
+                    styles.toggleThumb,
+                    { transform: [{ translateX: musicEnabled ? 18 : 2 }] },
+                  ]}
+                />
+              </View>
+            </Pressable>
 
-          {/* Start button */}
-          <Pressable
-            style={({ pressed }) => [
-              styles.startButton,
-              { backgroundColor: PetPalColors.primary, opacity: pressed ? 0.85 : 1 },
-            ]}
-            onPress={() => {
-              // Timer built in Session 10
-            }}
-          >
-            <ThemedText style={styles.startButtonText}>
-              Start — I won't touch my phone!
-            </ThemedText>
-          </Pressable>
-        </ScrollView>
+            <Pressable
+              style={({ pressed }) => [
+                styles.startButton,
+                { backgroundColor: PetPalColors.primary, opacity: pressed ? 0.85 : 1 },
+              ]}
+              onPress={handleStart}
+            >
+              <ThemedText style={styles.startButtonText}>
+                Start — I won't touch my phone!
+              </ThemedText>
+            </Pressable>
+          </ScrollView>
+        )}
       </ThemedView>
+
+      {/* ── Session complete overlay ── */}
+      <Modal
+        visible={sessionComplete}
+        transparent
+        animationType="fade"
+        statusBarTranslucent
+        onRequestClose={handleDone}
+      >
+        <View style={styles.backdrop}>
+          <View style={[styles.celebCard, { backgroundColor: cardBg }]}>
+            <ThemedText style={styles.celebEmoji}>{petEmoji}</ThemedText>
+            <ThemedText style={styles.celebHeading}>Session complete!</ThemedText>
+            <ThemedText style={[styles.celebSub, { color: textMuted }]}>
+              You focused for {completedDuration} minute{completedDuration !== 1 ? 's' : ''}.
+              {'\n'}{petName} is so proud of you!
+            </ThemedText>
+
+            <Pressable
+              style={({ pressed }) => [
+                styles.doneButton,
+                { backgroundColor: PetPalColors.primary, opacity: pressed ? 0.85 : 1 },
+              ]}
+              onPress={handleDone}
+            >
+              <ThemedText style={styles.doneButtonText}>Awesome! 🌟</ThemedText>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -146,6 +229,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  // Setup view
   scrollContent: {
     paddingHorizontal: 24,
     paddingTop: 16,
@@ -227,6 +311,69 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   startButtonText: {
+    color: PetPalColors.white,
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  // Active session view
+  sessionContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 24,
+    gap: 24,
+  },
+  sessionHint: {
+    fontSize: 16,
+    textAlign: 'center',
+  },
+  giveUpButton: {
+    position: 'absolute',
+    bottom: 40,
+    paddingHorizontal: 24,
+    paddingVertical: 10,
+  },
+  giveUpText: {
+    fontSize: 14,
+    textDecorationLine: 'underline',
+  },
+  // Completion modal
+  backdrop: {
+    flex: 1,
+    backgroundColor: PetPalColors.scrim,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 24,
+  },
+  celebCard: {
+    width: '100%',
+    borderRadius: 24,
+    padding: 28,
+    alignItems: 'center',
+    gap: 12,
+  },
+  celebEmoji: {
+    fontSize: 80,
+    lineHeight: 92,
+  },
+  celebHeading: {
+    fontSize: 26,
+    fontWeight: '800',
+    textAlign: 'center',
+  },
+  celebSub: {
+    fontSize: 15,
+    textAlign: 'center',
+    lineHeight: 22,
+  },
+  doneButton: {
+    width: '100%',
+    borderRadius: 16,
+    paddingVertical: 16,
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  doneButtonText: {
     color: PetPalColors.white,
     fontSize: 16,
     fontWeight: '700',
