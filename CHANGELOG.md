@@ -23,9 +23,10 @@ Format: `[Phase X · Session Y] — Description`
   - Added `sessionActive`, `sessionComplete`, `completedDuration` states
   - Start button transitions to active session view: `CircularCountdown` + pet encouragement hint + Give Up button
   - Give Up button calls `handleGiveUp` → clears `sessionActive`, returns to setup
-  - `handleSessionComplete` records `completedDuration`, clears active, sets `sessionComplete` (storage writes stubbed for Session 12)
+  - `handleSessionComplete` persists session on completion: calls `resetDailyDataIfNeeded()`, increments and persists `TOTAL_SESSIONS_EVER` / `SESSIONS_TODAY` / `FOCUS_TIME_TODAY`, calls `calculateMood()` with fresh values, refreshes pet emoji in case an evolution threshold was crossed
   - Completion modal: dark-mode aware card, `PetPalColors.scrim` backdrop, pet emoji + duration summary + "Awesome!" dismiss button
-  - `useFocusEffect` resets only `sessionActive` on tab return — `sessionComplete` persists until explicitly dismissed to prevent silent modal dismissal on navigation
+  - `useFocusEffect` cleanup cancels active session on blur (not on next focus) — `CircularCountdown` cannot continue offscreen or fire `handleSessionComplete` after navigation
+  - `sessionComplete` is NOT reset by `useFocusEffect` — modal persists until explicitly dismissed
 
 ---
 
