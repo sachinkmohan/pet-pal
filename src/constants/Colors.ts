@@ -39,6 +39,7 @@ export const PetPalColors = {
 
   // Base
   white: '#ffffff',
+  scrim: 'rgba(0,0,0,0.6)',  // modal backdrop
 
   // Tab bar
   tabActive: '#0a7ea4',

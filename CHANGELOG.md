@@ -7,6 +7,50 @@ Format: `[Phase X · Session Y] — Description`
 
 ## [Unreleased]
 
+### Fixed
+- `app/(tabs)/index.tsx` — evolution celebration now only fires when stage advances **forward**: replaced `storedStage !== computedStage` check with index comparison (`computedIndex > storedIndex` in `EVOLUTION_ORDER`), preventing spurious celebrations if stored stage is corrupt or higher than computed
+- `components/evolution-celebration.tsx` — secondary UI elements now use dark-mode tokens when theme is dark: `rewardText` uses `textMutedDark`, share card background uses `surfaceDark`, share button background uses `surfaceDark` (previously all three used light-only tokens regardless of theme)
+
+## [Phase 2 · Session 8] — 2026-03-24
+
+### Added
+- `components/evolution-celebration.tsx` — modal overlay shown when pet evolves:
+  - Spring scale + opacity entrance animation via `Animated` API
+  - Confetti emoji strip, large pet emoji, stage name, unlock reward text
+  - Shareable card with generated text: `"[Name] just evolved into [Stage]! 🎉 \n[N] focus sessions completed."`
+  - Share button (uses RN `Share.share()`; failure silently ignored — card text visible)
+  - Dismiss button writes confirmed stage to storage, preventing retrigger
+  - Dark-mode aware card background via `useColorScheme()`
+- `src/constants/Colors.ts` — added `scrim: 'rgba(0,0,0,0.6)'` token for modal backdrops
+
+### Changed
+- `app/(tabs)/index.tsx` — wires evolution detection and celebration:
+  - Loads `STORAGE_KEYS.EVOLUTION_STAGE` in `loadData` alongside other data
+  - Validates stored stage against `EVOLUTION_ORDER` before comparing (prevents infinite retrigger on corrupt/unknown value)
+  - Sets `celebrationStage` state when computed stage differs from stored stage
+  - `handleEvolutionDismiss` writes new stage to storage (with try/catch) then clears state
+  - `EvolutionCelebration` conditionally mounted (not just hidden) — fresh animation on every evolution
+
+---
+
+## [Phase 2 · Session 7] — 2026-03-24
+
+### Added
+- `components/xp-progress-bar.tsx` — reusable `XpProgressBar` component; handles 0%, mid-progress, full, and legendary (max) states; shows sessions-left label
+- `components/evolution-card.tsx` — reusable `EvolutionCard` component for timeline entries; renders `completed` (green checkmark), `current` (highlighted row + pill badge + primary border), and `locked` (dimmed at 35% opacity) statuses; optional connector line between cards
+- `app/(tabs)/journey.tsx` — full rebuild replacing hardcoded placeholder:
+  - Reads `petName` + `totalSessionsEver` from storage; refreshes on focus via `useFocusEffect`
+  - Current stage card: pet emoji, name + stage label, total sessions count, `XpProgressBar`
+  - Next evolution preview section (hidden at legendary): current emoji → next emoji with unlock reward
+  - Full 6-stage evolution timeline using `EvolutionCard`; status derived dynamically from `totalSessionsEver`
+
+### Changed
+- `app/(tabs)/index.tsx` — replaced inline XP bar JSX + calculations with `<XpProgressBar>` component; removed `getNextEvolutionStage` and `sessionsToNextEvolution` imports; removed dead XP styles (`xpSection`, `xpLabelRow`, `xpLabel`, `xpSubLabel`, `xpBarBg`, `xpBarFill`)
+
+### Fixed
+- `components/evolution-card.tsx` — `egg` detail line was rendering `"Starting state · Starting state"` (duplicate); now shows only `"Starting state"` for the starting stage
+- `components/xp-progress-bar.tsx` — added `?? 0` null guard on `sessionsLeft` render (TypeScript type is `number | null`; value is never actually null at that render point but guard is correct)
+
 ---
 
 ## [Phase 2 · Session 6] — 2026-03-24
