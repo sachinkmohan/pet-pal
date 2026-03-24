@@ -1,57 +1,119 @@
+import { useFocusEffect, useRouter } from 'expo-router';
+import { useCallback, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { EvolutionCard, EvolutionStatus } from '@/components/evolution-card';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-
-const EVOLUTION_STAGES = [
-  { emoji: '🥚', name: 'Egg', label: 'Starting state', sessions: 0, unlocked: true },
-  { emoji: '🐣', name: 'Baby Chick', label: 'New food options', sessions: 10, unlocked: false },
-  { emoji: '🐥', name: 'Fluffy Chick', label: 'Accessories slot', sessions: 25, unlocked: false },
-  { emoji: '🐦', name: 'Teen Bird', label: 'New background theme', sessions: 50, unlocked: false },
-  { emoji: '🦅', name: 'Adult Eagle', label: 'Special animation', sessions: 100, unlocked: false },
-  { emoji: '🦄', name: 'Legendary', label: 'Shareable card + badge', sessions: 200, unlocked: false },
-];
+import { XpProgressBar } from '@/components/xp-progress-bar';
+import { useColorScheme } from '@/hooks/use-color-scheme';
+import { PetPalColors } from '@/src/constants/Colors';
+import {
+  EVOLUTION_CONFIG,
+  EVOLUTION_ORDER,
+  EvolutionStage,
+  getEvolutionStage,
+  getNextEvolutionStage,
+} from '@/src/constants/PetStates';
+import { getItem } from '@/src/storage/AppStorage';
+import { STORAGE_KEYS } from '@/src/storage/keys';
 
 export default function JourneyScreen() {
+  const isDark = useColorScheme() === 'dark';
+  const router = useRouter();
+
+  const [petName, setPetName] = useState('Pochi');
+  const [totalSessionsEver, setTotalSessionsEver] = useState(0);
+
+  const loadData = useCallback(async () => {
+    const [name, total] = await Promise.all([
+      getItem<string>(STORAGE_KEYS.PET_NAME),
+      getItem<number>(STORAGE_KEYS.TOTAL_SESSIONS_EVER),
+    ]);
+    setPetName(name ?? 'Pochi');
+    setTotalSessionsEver(total ?? 0);
+  }, []);
+
+  useFocusEffect(useCallback(() => { loadData(); }, [loadData]));
+
+  const currentStage = getEvolutionStage(totalSessionsEver);
+  const currentConfig = EVOLUTION_CONFIG[currentStage];
+  const nextStage = getNextEvolutionStage(currentStage);
+  const nextConfig = nextStage ? EVOLUTION_CONFIG[nextStage] : null;
+
+  const surface = isDark ? PetPalColors.surfaceDark : PetPalColors.surface;
+  const textMuted = isDark ? PetPalColors.textMutedDark : PetPalColors.textMuted;
+
+  function stageStatus(stage: EvolutionStage): EvolutionStatus {
+    const required = EVOLUTION_CONFIG[stage].sessionsRequired;
+    const currentRequired = currentConfig.sessionsRequired;
+    if (required < currentRequired) return 'completed';
+    if (stage === currentStage) return 'current';
+    return 'locked';
+  }
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <ThemedView style={styles.container}>
-        <ThemedText style={styles.title}>🐣 Journey</ThemedText>
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.scrollContent}
+        >
+          {/* Header */}
+          <ThemedText style={styles.title}>🐣 Journey</ThemedText>
 
-        <View style={styles.currentStage}>
-          <ThemedText style={styles.currentEmoji}>🥚</ThemedText>
-          <ThemedText style={styles.currentName}>Pochi — Egg</ThemedText>
-          <View style={styles.xpBarBg}>
-            <View style={styles.xpBarFill} />
-          </View>
-          <ThemedText style={styles.xpLabel}>0 / 10 sessions to Baby Chick</ThemedText>
-        </View>
+          {/* Current stage card */}
+          <View style={[styles.currentCard, { backgroundColor: surface }]}>
+            <ThemedText style={styles.currentEmoji}>{currentConfig.emoji}</ThemedText>
+            <ThemedText style={styles.currentName}>
+              {petName} — {currentConfig.name}
+            </ThemedText>
+            <ThemedText style={[styles.currentSessions, { color: textMuted }]}>
+              {totalSessionsEver} total session{totalSessionsEver !== 1 ? 's' : ''}
+            </ThemedText>
 
-        <ScrollView showsVerticalScrollIndicator={false} style={styles.timeline}>
-          {EVOLUTION_STAGES.map((stage, index) => (
-            <View key={stage.name} style={styles.stageRow}>
-              <View style={[styles.stageIcon, !stage.unlocked && styles.stageIconLocked]}>
-                <ThemedText style={styles.stageEmoji}>{stage.emoji}</ThemedText>
-              </View>
-              <View style={styles.stageInfo}>
-                <ThemedText style={[styles.stageName, !stage.unlocked && styles.stageLocked]}>
-                  {stage.name}
-                </ThemedText>
-                <ThemedText style={[styles.stageDetail, !stage.unlocked && styles.stageLocked]}>
-                  {stage.sessions === 0 ? 'Start' : `${stage.sessions} sessions`} • {stage.label}
-                </ThemedText>
-              </View>
-              {stage.unlocked && (
-                <View style={styles.badge}>
-                  <ThemedText style={styles.badgeText}>✓</ThemedText>
-                </View>
-              )}
-              {index < EVOLUTION_STAGES.length - 1 && (
-                <View style={styles.connector} />
-              )}
+            <View style={styles.xpBarWrapper}>
+              <XpProgressBar
+                totalSessionsEver={totalSessionsEver}
+                currentStage={currentStage}
+              />
             </View>
-          ))}
+          </View>
+
+          {/* Next evolution preview */}
+          {nextConfig && (
+            <View style={[styles.nextPreview, { backgroundColor: PetPalColors.primaryLight }]}>
+              <ThemedText style={styles.nextLabel}>Next evolution</ThemedText>
+              <View style={styles.nextRow}>
+                <ThemedText style={styles.nextEmoji}>{currentConfig.emoji}</ThemedText>
+                <ThemedText style={[styles.nextArrow, { color: PetPalColors.primary }]}>→</ThemedText>
+                <ThemedText style={styles.nextEmoji}>{nextConfig.emoji}</ThemedText>
+                <View style={styles.nextInfo}>
+                  <ThemedText style={[styles.nextName, { color: PetPalColors.primary }]}>
+                    {nextConfig.name}
+                  </ThemedText>
+                  <ThemedText style={[styles.nextReward, { color: textMuted }]}>
+                    Unlocks: {nextConfig.unlockReward}
+                  </ThemedText>
+                </View>
+              </View>
+            </View>
+          )}
+
+          {/* Evolution timeline */}
+          <ThemedText style={styles.timelineHeader}>Evolution Path</ThemedText>
+
+          <View style={styles.timeline}>
+            {EVOLUTION_ORDER.map((stage, index) => (
+              <EvolutionCard
+                key={stage}
+                stage={stage}
+                status={stageStatus(stage)}
+                showConnector={index < EVOLUTION_ORDER.length - 1}
+              />
+            ))}
+          </View>
         </ScrollView>
       </ThemedView>
     </SafeAreaView>
@@ -64,101 +126,79 @@ const styles = StyleSheet.create({
   },
   container: {
     flex: 1,
+  },
+  scrollContent: {
     paddingHorizontal: 24,
     paddingTop: 24,
-    gap: 24,
+    paddingBottom: 40,
+    gap: 20,
   },
   title: {
     fontSize: 28,
     fontWeight: '700',
   },
-  currentStage: {
+  currentCard: {
     alignItems: 'center',
     gap: 8,
-    padding: 20,
-    borderRadius: 16,
-    backgroundColor: 'rgba(0,0,0,0.05)',
+    padding: 24,
+    borderRadius: 20,
   },
   currentEmoji: {
-    fontSize: 64,
+    fontSize: 72,
+    lineHeight: 84,
   },
   currentName: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: '700',
   },
-  xpBarBg: {
-    width: '100%',
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: 'rgba(0,0,0,0.1)',
-  },
-  xpBarFill: {
-    width: '5%',
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#0a7ea4',
-  },
-  xpLabel: {
+  currentSessions: {
     fontSize: 13,
+  },
+  xpBarWrapper: {
+    width: '100%',
+    marginTop: 4,
+  },
+  nextPreview: {
+    borderRadius: 16,
+    padding: 16,
+    gap: 10,
+  },
+  nextLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
     opacity: 0.6,
   },
-  timeline: {
-    flex: 1,
-  },
-  stageRow: {
+  nextRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 16,
-    paddingVertical: 12,
+    gap: 10,
   },
-  stageIcon: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: 'rgba(10,126,164,0.15)',
-    alignItems: 'center',
-    justifyContent: 'center',
+  nextEmoji: {
+    fontSize: 32,
   },
-  stageIconLocked: {
-    backgroundColor: 'rgba(0,0,0,0.06)',
+  nextArrow: {
+    fontSize: 20,
+    fontWeight: '700',
   },
-  stageEmoji: {
-    fontSize: 28,
-  },
-  stageInfo: {
+  nextInfo: {
     flex: 1,
     gap: 2,
   },
-  stageName: {
+  nextName: {
     fontSize: 16,
-    fontWeight: '600',
-  },
-  stageDetail: {
-    fontSize: 13,
-    opacity: 0.7,
-  },
-  stageLocked: {
-    opacity: 0.35,
-  },
-  badge: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: '#2e7d32',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  badgeText: {
-    color: '#fff',
-    fontSize: 12,
     fontWeight: '700',
   },
-  connector: {
-    position: 'absolute',
-    left: 25,
-    bottom: -12,
-    width: 2,
-    height: 24,
-    backgroundColor: 'rgba(0,0,0,0.1)',
+  nextReward: {
+    fontSize: 13,
+  },
+  timelineHeader: {
+    fontSize: 16,
+    fontWeight: '700',
+    marginBottom: -8,
+  },
+  timeline: {
+    gap: 0,
   },
 });

@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { XpProgressBar } from '@/components/xp-progress-bar';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { PetPalColors } from '@/src/constants/Colors';
 import {
@@ -12,8 +13,6 @@ import {
   MOOD_CONFIG,
   MoodState,
   getEvolutionStage,
-  getNextEvolutionStage,
-  sessionsToNextEvolution,
 } from '@/src/constants/PetStates';
 import { FEED_COOLDOWN_MS, calculateMood } from '@/src/services/MoodService';
 import { getItem } from '@/src/storage/AppStorage';
@@ -98,15 +97,6 @@ export default function HomeScreen() {
   });
   const moodConfig = MOOD_CONFIG[mood];
 
-  // XP progress bar
-  const nextStageSessionsLeft = sessionsToNextEvolution(totalSessionsEver, evolutionStage);
-  const currentStageMin = EVOLUTION_CONFIG[evolutionStage].sessionsRequired;
-  const nextStage = getNextEvolutionStage(evolutionStage);
-  const nextStageMin = nextStage ? EVOLUTION_CONFIG[nextStage].sessionsRequired : null;
-  const xpProgress = nextStageMin !== null
-    ? (totalSessionsEver - currentStageMin) / (nextStageMin - currentStageMin)
-    : 1;
-
   // Theme-aware colors
   const surface = isDark ? PetPalColors.surfaceDark : PetPalColors.surface;
   const border = isDark ? PetPalColors.borderDark : PetPalColors.border;
@@ -151,27 +141,10 @@ export default function HomeScreen() {
           </View>
 
           {/* XP Progress Bar */}
-          {nextStageSessionsLeft !== null && (
-            <View style={styles.xpSection}>
-              <View style={styles.xpLabelRow}>
-                <ThemedText style={styles.xpLabel}>XP Progress</ThemedText>
-                <ThemedText style={[styles.xpSubLabel, { color: textMuted }]}>
-                  {nextStageSessionsLeft} sessions to evolve
-                </ThemedText>
-              </View>
-              <View style={[styles.xpBarBg, { backgroundColor: surface, borderColor: border, borderWidth: 1 }]}>
-                <View
-                  style={[
-                    styles.xpBarFill,
-                    {
-                      backgroundColor: PetPalColors.primary,
-                      width: `${Math.min(xpProgress * 100, 100)}%`,
-                    },
-                  ]}
-                />
-              </View>
-            </View>
-          )}
+          <XpProgressBar
+            totalSessionsEver={totalSessionsEver}
+            currentStage={evolutionStage}
+          />
 
           {/* Action Buttons */}
           <View style={styles.buttons}>
@@ -288,30 +261,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     paddingHorizontal: 16,
     marginTop: 4,
-  },
-  xpSection: {
-    gap: 8,
-  },
-  xpLabelRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  xpLabel: {
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  xpSubLabel: {
-    fontSize: 13,
-  },
-  xpBarBg: {
-    height: 10,
-    borderRadius: 5,
-    overflow: 'hidden',
-  },
-  xpBarFill: {
-    height: '100%',
-    borderRadius: 5,
   },
   buttons: {
     gap: 12,
