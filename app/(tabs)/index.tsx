@@ -79,14 +79,18 @@ export default function HomeScreen() {
       screenTimeEnabled: statsEnabled ?? false,
     });
 
-    // Detect evolution: stored stage differs from computed stage.
+    // Detect evolution: only trigger celebration when stage advances forward.
     // Validate storedStage is a known EvolutionStage before comparing —
     // a corrupt/unknown value must not cause an infinite retrigger loop.
     const computedStage = getEvolutionStage(total);
     const isKnownStage = storedStage !== null &&
       (EVOLUTION_ORDER as string[]).includes(storedStage);
-    if (isKnownStage && storedStage !== computedStage) {
-      setCelebrationStage(computedStage);
+    if (isKnownStage) {
+      const storedIndex = (EVOLUTION_ORDER as string[]).indexOf(storedStage);
+      const computedIndex = (EVOLUTION_ORDER as string[]).indexOf(computedStage);
+      if (computedIndex > storedIndex) {
+        setCelebrationStage(computedStage);
+      }
     }
 
     setPetName(name ?? 'Pochi');

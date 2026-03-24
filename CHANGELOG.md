@@ -7,6 +7,10 @@ Format: `[Phase X · Session Y] — Description`
 
 ## [Unreleased]
 
+### Fixed
+- `app/(tabs)/index.tsx` — evolution celebration now only fires when stage advances **forward**: replaced `storedStage !== computedStage` check with index comparison (`computedIndex > storedIndex` in `EVOLUTION_ORDER`), preventing spurious celebrations if stored stage is corrupt or higher than computed
+- `components/evolution-celebration.tsx` — secondary UI elements now use dark-mode tokens when theme is dark: `rewardText` uses `textMutedDark`, share card background uses `surfaceDark`, share button background uses `surfaceDark` (previously all three used light-only tokens regardless of theme)
+
 ## [Phase 2 · Session 8] — 2026-03-24
 
 ### Added

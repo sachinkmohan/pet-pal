@@ -31,6 +31,11 @@ export function EvolutionCelebration({
   const config = EVOLUTION_CONFIG[newStage];
   const shareText = `${petName} just evolved into ${config.name}! 🎉\n${totalSessions} focus sessions completed.\n#PetPal`;
 
+  // Theme-aware tokens for secondary UI
+  const rewardColor = isDark ? PetPalColors.textMutedDark : PetPalColors.textMuted;
+  const shareCardBg = isDark ? PetPalColors.surfaceDark : PetPalColors.primaryLight;
+  const shareButtonBg = isDark ? PetPalColors.surfaceDark : PetPalColors.surface;
+
   useEffect(() => {
     if (visible) {
       scaleAnim.setValue(0.3);
@@ -95,12 +100,12 @@ export function EvolutionCelebration({
           <ThemedText style={[styles.stageName, { color: PetPalColors.primary }]}>
             {config.name}
           </ThemedText>
-          <ThemedText style={[styles.rewardText, { color: PetPalColors.textMuted }]}>
+          <ThemedText style={[styles.rewardText, { color: rewardColor }]}>
             Unlocked: {config.unlockReward}
           </ThemedText>
 
           {/* Shareable card */}
-          <View style={[styles.shareCard, { backgroundColor: PetPalColors.primaryLight }]}>
+          <View style={[styles.shareCard, { backgroundColor: shareCardBg }]}>
             <ThemedText style={styles.shareCardLabel}>SHAREABLE CARD</ThemedText>
             <ThemedText style={styles.shareCardText}>{shareText}</ThemedText>
           </View>
@@ -110,7 +115,7 @@ export function EvolutionCelebration({
             <Pressable
               style={({ pressed }) => [
                 styles.shareButton,
-                { backgroundColor: PetPalColors.surface, opacity: pressed ? 0.8 : 1 },
+                { backgroundColor: shareButtonBg, opacity: pressed ? 0.8 : 1 },
               ]}
               onPress={handleShare}
             >
