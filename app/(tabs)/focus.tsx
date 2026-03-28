@@ -1,4 +1,5 @@
 import { useFocusEffect } from 'expo-router';
+import { useNavigation } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AppState, AppStateStatus, Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -21,6 +22,7 @@ const PRESETS = [5, 15, 30, 60] as const;
 
 export default function FocusScreen() {
   const isDark = useColorScheme() === 'dark';
+  const navigation = useNavigation();
 
   // Setup state
   const [duration, setDuration] = useState(25);
@@ -44,6 +46,7 @@ export default function FocusScreen() {
   // Show session view during grace too — keeps CircularCountdown mounted so timer doesn't reset
   const sessionActive = sessionState === 'active' || sessionState === 'grace';
   const graceVisible = sessionState === 'grace';
+  const sessionFailed = sessionState === 'failed';
 
   const loadData = useCallback(async () => {
     const [name, totalSessions] = await Promise.all([
@@ -62,6 +65,13 @@ export default function FocusScreen() {
       machineRef.current?.giveUp();
     };
   }, [loadData]));
+
+  // Hide tab bar during active session, grace period, and failure modal
+  useEffect(() => {
+    navigation.setOptions({
+      tabBarStyle: (sessionActive || sessionFailed) ? { display: 'none' } : undefined,
+    });
+  }, [sessionActive, sessionFailed, navigation]);
 
   // Keep ref in sync with latest handleSessionComplete on every render
   // (before the effect that creates the machine — order matters)
@@ -138,9 +148,13 @@ export default function FocusScreen() {
   }
 
   function handleGraceExpired() {
-    // Grace overlay countdown finished — machine already transitioned to 'failed'
-    // Nothing extra needed: sessionState === 'failed' collapses to idle UI below
-    setSessionState('idle');
+    // Overlay countdown reached 0 while user was in the app.
+    // Route through the machine so its internal state stays in sync.
+    machineRef.current?.giveUp();
+  }
+
+  function handleFailedDismiss() {
+    machineRef.current?.giveUp(); // 'failed' → 'idle'
   }
 
   function handleDone() {
@@ -277,6 +291,36 @@ export default function FocusScreen() {
           onExpired={handleGraceExpired}
         />
       </ThemedView>
+
+      {/* ── Session failed overlay ── */}
+      <Modal
+        visible={sessionFailed}
+        transparent
+        animationType="fade"
+        statusBarTranslucent
+        onRequestClose={handleFailedDismiss}
+      >
+        <View style={styles.backdrop}>
+          <View style={[styles.celebCard, { backgroundColor: cardBg }]}>
+            <ThemedText style={styles.celebEmoji}>💔</ThemedText>
+            <ThemedText style={styles.failHeading}>Session ended</ThemedText>
+            <ThemedText style={[styles.celebSub, { color: textMuted }]}>
+              You left the app and {petName} got lonely.{'\n'}
+              Come back next time — you've got this!
+            </ThemedText>
+
+            <Pressable
+              style={({ pressed }) => [
+                styles.doneButton,
+                { backgroundColor: PetPalColors.sick, opacity: pressed ? 0.85 : 1 },
+              ]}
+              onPress={handleFailedDismiss}
+            >
+              <ThemedText style={styles.doneButtonText}>Try again</ThemedText>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
 
       {/* ── Session complete overlay ── */}
       <Modal
@@ -449,6 +493,12 @@ const styles = StyleSheet.create({
     fontSize: 26,
     fontWeight: '800',
     textAlign: 'center',
+  },
+  failHeading: {
+    fontSize: 26,
+    fontWeight: '800',
+    textAlign: 'center',
+    color: PetPalColors.sick,
   },
   celebSub: {
     fontSize: 15,

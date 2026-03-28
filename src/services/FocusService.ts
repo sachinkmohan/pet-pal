@@ -72,7 +72,7 @@ export function createFocusStateMachine(
     },
 
     giveUp() {
-      if (state !== 'active' && state !== 'grace') return;
+      if (state !== 'active' && state !== 'grace' && state !== 'failed') return;
       clearGrace();
       transition('idle');
     },

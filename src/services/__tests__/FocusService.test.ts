@@ -70,6 +70,16 @@ describe('FocusService grace period state machine', () => {
     expect(states).toEqual([]);
   });
 
+  test('giveUp from failed state resets to idle', () => {
+    machine = createFocusStateMachine((s) => states.push(s), 10_000);
+    machine.startSession();
+    machine.onBackground();
+    jest.advanceTimersByTime(10_001);
+    expect(machine.getState()).toBe('failed');
+    machine.giveUp();
+    expect(machine.getState()).toBe('idle');
+  });
+
   test('giveUp during grace cancels grace timer and returns to idle', () => {
     machine = createFocusStateMachine((s) => states.push(s), 10_000);
     machine.startSession();
