@@ -1,16 +1,18 @@
 import { useFocusEffect } from 'expo-router';
-import { useCallback, useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { AppState, AppStateStatus, Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { CircularCountdown } from '@/components/circular-countdown';
 import { CircularSlider } from '@/components/circular-slider';
+import { GraceOverlay } from '@/components/grace-overlay';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { PetPalColors } from '@/src/constants/Colors';
 import { EVOLUTION_CONFIG, getEvolutionStage } from '@/src/constants/PetStates';
 import { calculateMood } from '@/src/services/MoodService';
+import { createFocusStateMachine, FocusStateMachine, SessionState } from '@/src/services/FocusService';
 import { getItem, setItem } from '@/src/storage/AppStorage';
 import { STORAGE_KEYS } from '@/src/storage/keys';
 import { resetDailyDataIfNeeded } from '@/src/storage/seedData';
@@ -26,10 +28,22 @@ export default function FocusScreen() {
   const [petEmoji, setPetEmoji] = useState('🥚');
   const [petName, setPetName] = useState('Pochi');
 
-  // Session state
-  const [sessionActive, setSessionActive] = useState(false);
+  // Session state (driven by FocusStateMachine)
+  const [sessionState, setSessionState] = useState<SessionState>('idle');
   const [sessionComplete, setSessionComplete] = useState(false);
   const [completedDuration, setCompletedDuration] = useState(0);
+
+  // Machine ref — single instance per screen mount
+  const machineRef = useRef<FocusStateMachine | null>(null);
+  // Capture duration at session start so complete handler uses the right value
+  const sessionDurationRef = useRef(duration);
+  // Stable ref so machine callback never captures a stale handleSessionComplete
+  const handleSessionCompleteRef = useRef<(d: number) => Promise<void>>(async () => {});
+
+  // Derived booleans from state machine state
+  // Show session view during grace too — keeps CircularCountdown mounted so timer doesn't reset
+  const sessionActive = sessionState === 'active' || sessionState === 'grace';
+  const graceVisible = sessionState === 'grace';
 
   const loadData = useCallback(async () => {
     const [name, totalSessions] = await Promise.all([
@@ -43,25 +57,54 @@ export default function FocusScreen() {
 
   useFocusEffect(useCallback(() => {
     loadData();
-    // Cancel any active session on blur — CircularCountdown must not continue offscreen
-    // and cannot call handleSessionComplete after the screen loses focus.
-    // sessionComplete is NOT reset here — the modal must be dismissed explicitly.
-    return () => setSessionActive(false);
+    return () => {
+      // Cancel session when screen loses focus
+      machineRef.current?.giveUp();
+    };
   }, [loadData]));
 
+  // Keep ref in sync with latest handleSessionComplete on every render
+  // (before the effect that creates the machine — order matters)
+  handleSessionCompleteRef.current = handleSessionComplete;
+
+  // Create machine once and attach AppState listener
+  useEffect(() => {
+    const machine = createFocusStateMachine((state) => {
+      setSessionState(state);
+      if (state === 'completed') {
+        handleSessionCompleteRef.current(sessionDurationRef.current);
+      }
+    });
+    machineRef.current = machine;
+
+    const sub = AppState.addEventListener('change', (next: AppStateStatus) => {
+      if (next === 'background' || next === 'inactive') {
+        machine.onBackground();
+      } else if (next === 'active') {
+        machine.onForeground();
+      }
+    });
+
+    return () => {
+      sub.remove();
+      machine.dispose();
+      machineRef.current = null;
+    };
+  }, []);
+
   function handleStart() {
-    setSessionActive(true);
+    sessionDurationRef.current = duration;
+    machineRef.current?.startSession();
   }
 
   function handleGiveUp() {
-    setSessionActive(false);
+    machineRef.current?.giveUp();
   }
 
-  async function handleSessionComplete() {
-    // 1. Guard against midnight crossing during a long session
+  // Called by the state machine when it reaches 'completed'
+  async function handleSessionComplete(sessionDuration: number) {
     await resetDailyDataIfNeeded();
 
-    // 2. Read current counters
     const [totalSessions, sessionsToday, focusTimeToday, lastFedTime, statsEnabled] =
       await Promise.all([
         getItem<number>(STORAGE_KEYS.TOTAL_SESSIONS_EVER),
@@ -73,34 +116,36 @@ export default function FocusScreen() {
 
     const newTotal = (totalSessions ?? 0) + 1;
     const newSessionsToday = (sessionsToday ?? 0) + 1;
-    const newFocusTime = (focusTimeToday ?? 0) + duration;
+    const newFocusTime = (focusTimeToday ?? 0) + sessionDuration;
 
-    // 3. Persist incremented values
     await Promise.all([
       setItem(STORAGE_KEYS.TOTAL_SESSIONS_EVER, newTotal),
       setItem(STORAGE_KEYS.SESSIONS_TODAY, newSessionsToday),
       setItem(STORAGE_KEYS.FOCUS_TIME_TODAY, newFocusTime),
     ]);
 
-    // 4. Recalculate mood — called after every session per domain rules
-    //    (screenTimeHours wired once ScreenTimeService is available in Phase 6)
     calculateMood({
       sessionsCompleted: newSessionsToday,
       lastFedTime: lastFedTime ?? null,
       screenTimeEnabled: statsEnabled ?? false,
     });
 
-    // 5. Refresh pet emoji in case this session crossed an evolution threshold
     const stage = getEvolutionStage(newTotal);
     setPetEmoji(EVOLUTION_CONFIG[stage].emoji);
 
-    setCompletedDuration(duration);
-    setSessionActive(false);
+    setCompletedDuration(sessionDuration);
     setSessionComplete(true);
+  }
+
+  function handleGraceExpired() {
+    // Grace overlay countdown finished — machine already transitioned to 'failed'
+    // Nothing extra needed: sessionState === 'failed' collapses to idle UI below
+    setSessionState('idle');
   }
 
   function handleDone() {
     setSessionComplete(false);
+    setSessionState('idle');
   }
 
   // Theme-aware colors
@@ -119,7 +164,7 @@ export default function FocusScreen() {
 
             <CircularCountdown
               totalSeconds={duration * 60}
-              onComplete={handleSessionComplete}
+              onComplete={() => machineRef.current?.timerComplete()}
             />
 
             <ThemedText style={[styles.sessionHint, { color: textMuted }]}>
@@ -225,6 +270,12 @@ export default function FocusScreen() {
             </Pressable>
           </ScrollView>
         )}
+
+        {/* ── Grace period overlay (rendered over active session) ── */}
+        <GraceOverlay
+          visible={graceVisible}
+          onExpired={handleGraceExpired}
+        />
       </ThemedView>
 
       {/* ── Session complete overlay ── */}
