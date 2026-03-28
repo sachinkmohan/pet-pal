@@ -26,7 +26,8 @@
         "android.permission.POST_NOTIFICATIONS",
         "android.permission.WAKE_LOCK",
         "android.permission.RECEIVE_BOOT_COMPLETED"
-      ]
+      ],
+      "package": "com.ecmalayalam.PetPal"
     },
     "web": {
       "output": "static",
@@ -51,6 +52,12 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "8efb7019-1e72-4755-aec0-2d88d61a09bb"
+      }
     }
   }
 }
