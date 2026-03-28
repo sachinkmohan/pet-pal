@@ -44,6 +44,7 @@ Changes from the original plan, with rationale:
 | Music | 3 tracks (2 gated) | **1 free track; others gated** | Reduces MVP scope; still has monetization hook |
 | Framework | Bare React Native | **Expo with dev builds** | Familiar tooling; easier setup; still supports native modules |
 | Wake lock library | react-native-wake-lock | **Cut (redundant)** | react-native-background-actions already handles this |
+| background-actions install | Session 11 (cheat detection) | **Moved to Session 17 (music)** | Grace period only needs built-in AppState — no native module required. Library needs a dev build anyway (won't run in Expo Go), so defer until Session 17 when a dev build is already needed for react-native-track-player. Install both native modules in one build. |
 
 ---
 
@@ -695,7 +696,6 @@ Sized for **45-60 minute development sessions**. Each chunk is a self-contained 
 - [ ] Session complete triggers: stop timer, show celebration
 
 **Session 11: Cheat Detection & Background**
-- [ ] Install react-native-background-actions
 - [ ] Implement AppState listener for background detection
 - [ ] Build 10-second grace period logic
 - [ ] Build grace period overlay ("Come back! X seconds...")
@@ -747,8 +747,10 @@ Sized for **45-60 minute development sessions**. Each chunk is a self-contained 
 
 ### Phase 5 — Music & Notifications (2-3 sessions)
 
-**Session 17: Music System**
+**Session 17: Music System & Background Timer**
 - [ ] Install react-native-track-player
+- [ ] Install react-native-background-actions (deferred from Session 11 — requires dev build; install alongside track-player in one build)
+- [ ] Wire background-actions to keep countdown timer running when screen is off
 - [ ] Set up player (run once at app start)
 - [ ] Download and add rain-focus.mp3 from Pixabay
 - [ ] Add music toggle on Focus screen
