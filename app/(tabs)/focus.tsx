@@ -13,7 +13,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { PetPalColors } from '@/src/constants/Colors';
 import { EVOLUTION_CONFIG, getEvolutionStage } from '@/src/constants/PetStates';
 import { calculateMood } from '@/src/services/MoodService';
-import { startBackgroundTimer, stopBackgroundTimer } from '@/src/services/BackgroundTimerService';
+import { showSessionNotification, cancelSessionNotification } from '@/src/services/NotificationService';
 import { createFocusStateMachine, FocusStateMachine, SessionState } from '@/src/services/FocusService';
 import { getItem, setItem } from '@/src/storage/AppStorage';
 import { STORAGE_KEYS } from '@/src/storage/keys';
@@ -106,12 +106,12 @@ export default function FocusScreen() {
   function handleStart() {
     sessionDurationRef.current = duration;
     machineRef.current?.startSession();
-    startBackgroundTimer(petName, duration * 60, () => machineRef.current?.timerComplete());
+    showSessionNotification(petName, duration * 60);
   }
 
   function handleGiveUp() {
     machineRef.current?.giveUp();
-    stopBackgroundTimer();
+    cancelSessionNotification();
   }
 
   // Called by the state machine when it reaches 'completed'
@@ -146,7 +146,7 @@ export default function FocusScreen() {
     const stage = getEvolutionStage(newTotal);
     setPetEmoji(EVOLUTION_CONFIG[stage].emoji);
 
-    await stopBackgroundTimer();
+    await cancelSessionNotification();
     setCompletedDuration(sessionDuration);
     setSessionComplete(true);
   }
@@ -159,7 +159,7 @@ export default function FocusScreen() {
 
   function handleFailedDismiss() {
     machineRef.current?.giveUp(); // 'failed' → 'idle'
-    stopBackgroundTimer();
+    cancelSessionNotification();
   }
 
   function handleDone() {

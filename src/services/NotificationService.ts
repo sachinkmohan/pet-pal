@@ -1,12 +1,8 @@
 /**
- * NotificationService — scheduled / triggered notifications (Session 18)
+ * NotificationService — session-running + scheduled notifications
  *
- * Used for: pet hungry reminder, daily focus reminder, streak-at-risk alert.
- *
- * NOT used for the session-running notification — that is handled by
- * BackgroundTimerService via react-native-background-actions, which creates
- * its own persistent foreground-service notification automatically.
- * Using both would show a duplicate notification during a session.
+ * Session notification: shows when focus session starts, cancelled on end.
+ * Scheduled notifications (pet hungry, daily reminder, streak): Session 18.
  */
 import * as Notifications from 'expo-notifications';
 
@@ -22,7 +18,18 @@ Notifications.setNotificationHandler({
 
 let activeNotificationId: string | null = null;
 
-export async function showSessionNotification(petName: string): Promise<void> {
+export function formatEndTime(durationSeconds: number, now = Date.now()): string {
+  const end = new Date(now + durationSeconds * 1000);
+  const h = end.getHours() % 12 || 12;
+  const m = String(end.getMinutes()).padStart(2, '0');
+  const ampm = end.getHours() >= 12 ? 'PM' : 'AM';
+  return `${h}:${m} ${ampm}`;
+}
+
+export async function showSessionNotification(
+  petName: string,
+  durationSeconds: number,
+): Promise<void> {
   const { status } = await Notifications.requestPermissionsAsync();
   if (status !== 'granted') return;
 
@@ -31,7 +38,7 @@ export async function showSessionNotification(petName: string): Promise<void> {
   activeNotificationId = await Notifications.scheduleNotificationAsync({
     content: {
       title: `${petName} is waiting... 🐣`,
-      body: 'Focus session in progress — stay off your phone!',
+      body: `Session ends at ${formatEndTime(durationSeconds)} — stay focused!`,
       sticky: true,
       autoDismiss: false,
       data: { type: 'session_running' },
