@@ -1,12 +1,11 @@
 import { useFocusEffect } from 'expo-router';
 import { useNavigation } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { AppState, AppStateStatus, Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { CircularCountdown } from '@/components/circular-countdown';
 import { CircularSlider } from '@/components/circular-slider';
-import { GraceOverlay } from '@/components/grace-overlay';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -40,14 +39,8 @@ export default function FocusScreen() {
   const machineRef = useRef<FocusStateMachine | null>(null);
   // Capture duration at session start so complete handler uses the right value
   const sessionDurationRef = useRef(duration);
-  // Stable ref so machine callback never captures a stale handleSessionComplete
-  const handleSessionCompleteRef = useRef<(d: number) => Promise<void>>(async () => {});
 
-  // Derived booleans from state machine state
-  // Show session view during grace too — keeps CircularCountdown mounted so timer doesn't reset
-  const sessionActive = sessionState === 'active' || sessionState === 'grace';
-  const graceVisible = sessionState === 'grace';
-  const sessionFailed = sessionState === 'failed';
+  const sessionActive = sessionState === 'active';
 
   const loadData = useCallback(async () => {
     const [name, totalSessions] = await Promise.all([
@@ -62,42 +55,31 @@ export default function FocusScreen() {
   useFocusEffect(useCallback(() => {
     loadData();
     return () => {
-      // Cancel session when screen loses focus
       machineRef.current?.giveUp();
     };
   }, [loadData]));
 
-  // Hide tab bar during active session, grace period, and failure modal
+  // Hide tab bar during active session
   useEffect(() => {
     navigation.setOptions({
-      tabBarStyle: (sessionActive || sessionFailed) ? { display: 'none' } : undefined,
+      tabBarStyle: sessionActive ? { display: 'none' } : undefined,
     });
-  }, [sessionActive, sessionFailed, navigation]);
+  }, [sessionActive, navigation]);
 
-  // Keep ref in sync with latest handleSessionComplete on every render
-  // (before the effect that creates the machine — order matters)
-  handleSessionCompleteRef.current = handleSessionComplete;
-
-  // Create machine once and attach AppState listener
+  // Create machine once
   useEffect(() => {
     const machine = createFocusStateMachine((state) => {
       setSessionState(state);
       if (state === 'completed') {
-        handleSessionCompleteRef.current(sessionDurationRef.current);
+        // Don't save yet — wait for user to confirm or deny
+        setCompletedDuration(sessionDurationRef.current);
+        setSessionComplete(true);
+        cancelSessionNotification();
       }
     });
     machineRef.current = machine;
 
-    const sub = AppState.addEventListener('change', (next: AppStateStatus) => {
-      if (next === 'background' || next === 'inactive') {
-        machine.onBackground();
-      } else if (next === 'active') {
-        machine.onForeground();
-      }
-    });
-
     return () => {
-      sub.remove();
       machine.dispose();
       machineRef.current = null;
     };
@@ -114,8 +96,7 @@ export default function FocusScreen() {
     cancelSessionNotification();
   }
 
-  // Called by the state machine when it reaches 'completed'
-  async function handleSessionComplete(sessionDuration: number) {
+  async function saveSessionData(sessionDuration: number) {
     await resetDailyDataIfNeeded();
 
     const [totalSessions, sessionsToday, focusTimeToday, lastFedTime, statsEnabled] =
@@ -145,26 +126,18 @@ export default function FocusScreen() {
 
     const stage = getEvolutionStage(newTotal);
     setPetEmoji(EVOLUTION_CONFIG[stage].emoji);
-
-    await cancelSessionNotification();
-    setCompletedDuration(sessionDuration);
-    setSessionComplete(true);
   }
 
-  function handleGraceExpired() {
-    // Overlay countdown reached 0 while user was in the app.
-    // Route through the machine so its internal state stays in sync.
-    machineRef.current?.giveUp();
-  }
-
-  function handleFailedDismiss() {
-    machineRef.current?.giveUp(); // 'failed' → 'idle'
-    cancelSessionNotification();
-  }
-
-  function handleDone() {
+  async function handleSaveSession() {
+    await saveSessionData(completedDuration);
     setSessionComplete(false);
-    setSessionState('idle');
+    machineRef.current?.giveUp(); // completed → idle
+  }
+
+  function handleDontSave() {
+    // User admitted they cheated — discard without recording
+    setSessionComplete(false);
+    machineRef.current?.giveUp(); // completed → idle
   }
 
   // Theme-aware colors
@@ -289,51 +262,15 @@ export default function FocusScreen() {
             </Pressable>
           </ScrollView>
         )}
-
-        {/* ── Grace period overlay (rendered over active session) ── */}
-        <GraceOverlay
-          visible={graceVisible}
-          onExpired={handleGraceExpired}
-        />
       </ThemedView>
 
-      {/* ── Session failed overlay ── */}
-      <Modal
-        visible={sessionFailed}
-        transparent
-        animationType="fade"
-        statusBarTranslucent
-        onRequestClose={handleFailedDismiss}
-      >
-        <View style={styles.backdrop}>
-          <View style={[styles.celebCard, { backgroundColor: cardBg }]}>
-            <ThemedText style={styles.celebEmoji}>💔</ThemedText>
-            <ThemedText style={styles.failHeading}>Session ended</ThemedText>
-            <ThemedText style={[styles.celebSub, { color: textMuted }]}>
-              You left the app and {petName} got lonely.{'\n'}
-              Come back next time — you've got this!
-            </ThemedText>
-
-            <Pressable
-              style={({ pressed }) => [
-                styles.doneButton,
-                { backgroundColor: PetPalColors.sick, opacity: pressed ? 0.85 : 1 },
-              ]}
-              onPress={handleFailedDismiss}
-            >
-              <ThemedText style={styles.doneButtonText}>Try again</ThemedText>
-            </Pressable>
-          </View>
-        </View>
-      </Modal>
-
-      {/* ── Session complete overlay ── */}
+      {/* ── Session complete modal ── */}
       <Modal
         visible={sessionComplete}
         transparent
         animationType="fade"
         statusBarTranslucent
-        onRequestClose={handleDone}
+        onRequestClose={handleDontSave}
       >
         <View style={styles.backdrop}>
           <View style={[styles.celebCard, { backgroundColor: cardBg }]}>
@@ -346,12 +283,24 @@ export default function FocusScreen() {
 
             <Pressable
               style={({ pressed }) => [
-                styles.doneButton,
+                styles.saveButton,
                 { backgroundColor: PetPalColors.primary, opacity: pressed ? 0.85 : 1 },
               ]}
-              onPress={handleDone}
+              onPress={handleSaveSession}
             >
-              <ThemedText style={styles.doneButtonText}>Awesome! 🌟</ThemedText>
+              <ThemedText style={styles.buttonText}>Save session 🌟</ThemedText>
+            </Pressable>
+
+            <Pressable
+              style={({ pressed }) => [
+                styles.cheatButton,
+                { opacity: pressed ? 0.7 : 1 },
+              ]}
+              onPress={handleDontSave}
+            >
+              <ThemedText style={[styles.cheatText, { color: textMuted }]}>
+                Don't save — I cheated
+              </ThemedText>
             </Pressable>
           </View>
         </View>
@@ -499,27 +448,29 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     textAlign: 'center',
   },
-  failHeading: {
-    fontSize: 26,
-    fontWeight: '800',
-    textAlign: 'center',
-    color: PetPalColors.sick,
-  },
   celebSub: {
     fontSize: 15,
     textAlign: 'center',
     lineHeight: 22,
   },
-  doneButton: {
+  saveButton: {
     width: '100%',
     borderRadius: 16,
     paddingVertical: 16,
     alignItems: 'center',
     marginTop: 8,
   },
-  doneButtonText: {
+  buttonText: {
     color: PetPalColors.white,
     fontSize: 16,
     fontWeight: '700',
+  },
+  cheatButton: {
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+  },
+  cheatText: {
+    fontSize: 14,
+    textDecorationLine: 'underline',
   },
 });
