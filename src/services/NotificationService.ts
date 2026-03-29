@@ -1,3 +1,13 @@
+/**
+ * NotificationService — scheduled / triggered notifications (Session 18)
+ *
+ * Used for: pet hungry reminder, daily focus reminder, streak-at-risk alert.
+ *
+ * NOT used for the session-running notification — that is handled by
+ * BackgroundTimerService via react-native-background-actions, which creates
+ * its own persistent foreground-service notification automatically.
+ * Using both would show a duplicate notification during a session.
+ */
 import * as Notifications from 'expo-notifications';
 
 Notifications.setNotificationHandler({

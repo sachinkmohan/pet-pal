@@ -36,6 +36,7 @@
     "plugins": [
       "expo-router",
       "expo-notifications",
+      "./plugins/withForegroundServiceType",
       [
         "expo-splash-screen",
         {
