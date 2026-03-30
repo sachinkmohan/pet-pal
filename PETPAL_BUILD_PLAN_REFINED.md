@@ -695,12 +695,13 @@ Sized for **45-60 minute development sessions**. Each chunk is a self-contained 
 - [ ] "Give up" button (small, bottom of screen)
 - [ ] Session complete triggers: stop timer, show celebration
 
-**Session 11: Cheat Detection & Background**
-- [ ] Implement AppState listener for background detection
-- [ ] Build 10-second grace period logic
-- [ ] Build grace period overlay ("Come back! X seconds...")
-- [ ] Test: app to background → return in <10s → continues
-- [ ] Test: app to background → 10s passes → session fails
+**Session 11: Focus Session State Machine & Honest Reporting**
+- [x] Implemented `FocusService` state machine (`idle → active → completed`) — pure TS, no RN deps
+- [x] Removed AppState cheat detection entirely — screen lock triggers `background` indistinguishably from app-switching; enforcing it caused false failures
+- [x] On session complete, user is shown a choice: **"Save session"** or **"Don't save — I cheated"** — session data only written on explicit save
+- [x] `giveUp()` handles both `active → idle` and `completed → idle` (for the don't-save path)
+- [x] Tab bar hidden during active session via `navigation.setOptions`
+- [x] Persistent notification shown on session start ("Session ends at X:XX PM") via `expo-notifications`; dismissed on end/give-up
 
 **Session 12: Session Integration**
 - [ ] Wire session complete → increment sessionsToday + totalSessionsEver

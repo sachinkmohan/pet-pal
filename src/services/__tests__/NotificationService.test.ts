@@ -21,48 +21,20 @@ describe('formatEndTime', () => {
   });
 });
 
-describe('cancelSessionNotification', () => {
-  test('dismisses the notification id returned by scheduleNotificationAsync', async () => {
-    mockSchedule.mockResolvedValue('abc-123');
-    await showSessionNotification('Pochi', 1500);
-    await cancelSessionNotification();
-
-    expect(mockDismiss).toHaveBeenCalledWith('abc-123');
-  });
-
-  test('is a no-op when no notification is active', async () => {
-    await cancelSessionNotification();
-    expect(mockDismiss).not.toHaveBeenCalled();
-  });
-});
-
 describe('showSessionNotification', () => {
-  test('cancels previous notification before scheduling a new one', async () => {
-    mockSchedule.mockResolvedValueOnce('first-id').mockResolvedValueOnce('second-id');
-
+  test('schedules only the sticky running notification', async () => {
     await showSessionNotification('Pochi', 1500);
-    await showSessionNotification('Pochi', 1500);
-
-    expect(mockDismiss).toHaveBeenCalledWith('first-id');
-    expect(mockSchedule).toHaveBeenCalledTimes(2);
+    expect(mockSchedule).toHaveBeenCalledTimes(1);
   });
 
-  test('does nothing if permission is denied', async () => {
-    mockPermissions.mockResolvedValue({ status: 'denied' });
+  test('sticky notification has pet name in title', async () => {
     await showSessionNotification('Pochi', 1500);
-    expect(mockSchedule).not.toHaveBeenCalled();
-  });
-
-  test('schedules a notification with pet name in title', async () => {
-    await showSessionNotification('Pochi', 1500);
-
     const [request] = mockSchedule.mock.calls[0];
     expect(request.content.title).toContain('Pochi');
   });
 
-  test('notification is persistent: sticky, no auto-dismiss, immediate trigger', async () => {
+  test('sticky notification is persistent: sticky, no auto-dismiss, immediate trigger', async () => {
     await showSessionNotification('Pochi', 1500);
-
     const [request] = mockSchedule.mock.calls[0];
     expect(request.content.sticky).toBe(true);
     expect(request.content.autoDismiss).toBe(false);
@@ -71,8 +43,38 @@ describe('showSessionNotification', () => {
 
   test('body contains session end time', async () => {
     await showSessionNotification('Pochi', 1500);
-
     const [request] = mockSchedule.mock.calls[0];
     expect(request.content.body).toMatch(/\d+:\d{2} (AM|PM)/);
   });
+
+  test('does nothing if permission is denied', async () => {
+    mockPermissions.mockResolvedValue({ status: 'denied' });
+    await showSessionNotification('Pochi', 1500);
+    expect(mockSchedule).not.toHaveBeenCalled();
+  });
+
+  test('cancels previous sticky before scheduling a new one', async () => {
+    mockSchedule
+      .mockResolvedValueOnce('first-id')
+      .mockResolvedValueOnce('second-id');
+    await showSessionNotification('Pochi', 1500);
+    await showSessionNotification('Pochi', 1500);
+    expect(mockDismiss).toHaveBeenCalledWith('first-id');
+    expect(mockSchedule).toHaveBeenCalledTimes(2);
+  });
 });
+
+describe('cancelSessionNotification', () => {
+  test('dismisses the sticky notification', async () => {
+    mockSchedule.mockResolvedValue('sticky-id');
+    await showSessionNotification('Pochi', 1500);
+    await cancelSessionNotification();
+    expect(mockDismiss).toHaveBeenCalledWith('sticky-id');
+  });
+
+  test('is a no-op when nothing is active', async () => {
+    await cancelSessionNotification();
+    expect(mockDismiss).not.toHaveBeenCalled();
+  });
+});
+

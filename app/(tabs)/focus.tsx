@@ -37,9 +37,10 @@ export default function FocusScreen() {
 
   // Machine ref — single instance per screen mount
   const machineRef = useRef<FocusStateMachine | null>(null);
-  // Capture duration at session start so complete handler uses the right value
   const sessionDurationRef = useRef(duration);
+  const petNameRef = useRef(petName);
 
+  petNameRef.current = petName;
   const sessionActive = sessionState === 'active';
 
   const loadData = useCallback(async () => {
@@ -72,9 +73,9 @@ export default function FocusScreen() {
       setSessionState(state);
       if (state === 'completed') {
         // Don't save yet — wait for user to confirm or deny
+        cancelSessionNotification();
         setCompletedDuration(sessionDurationRef.current);
         setSessionComplete(true);
-        cancelSessionNotification();
       }
     });
     machineRef.current = machine;
@@ -85,10 +86,12 @@ export default function FocusScreen() {
     };
   }, []);
 
-  function handleStart() {
-    sessionDurationRef.current = duration;
+  function handleStart(overrideSecs?: number) {
+    const totalSecs = overrideSecs ?? duration * 60;
+    sessionDurationRef.current = totalSecs / 60;
+    if (overrideSecs !== undefined) setDuration(overrideSecs / 60);
     machineRef.current?.startSession();
-    showSessionNotification(petName, duration * 60);
+    showSessionNotification(petName, totalSecs);
   }
 
   function handleGiveUp() {
@@ -254,10 +257,20 @@ export default function FocusScreen() {
                 styles.startButton,
                 { backgroundColor: PetPalColors.primary, opacity: pressed ? 0.85 : 1 },
               ]}
-              onPress={handleStart}
+              onPress={() => handleStart()}
             >
               <ThemedText style={styles.startButtonText}>
                 Start — I won't touch my phone!
+              </ThemedText>
+            </Pressable>
+
+            {/* DEV: quick 10-second test session */}
+            <Pressable
+              style={({ pressed }) => [styles.testButton, { opacity: pressed ? 0.7 : 1 }]}
+              onPress={() => handleStart(10)}
+            >
+              <ThemedText style={[styles.testButtonText, { color: textMuted }]}>
+                ⚡ 10s test
               </ThemedText>
             </Pressable>
           </ScrollView>
@@ -401,6 +414,12 @@ const styles = StyleSheet.create({
     color: PetPalColors.white,
     fontSize: 16,
     fontWeight: '700',
+  },
+  testButton: {
+    paddingVertical: 8,
+  },
+  testButtonText: {
+    fontSize: 12,
   },
   // Active session view
   sessionContainer: {

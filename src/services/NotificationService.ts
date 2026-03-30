@@ -1,14 +1,13 @@
 /**
- * NotificationService — session-running + scheduled notifications
+ * NotificationService — session notifications
  *
- * Session notification: shows when focus session starts, cancelled on end.
+ * showSessionNotification: sticky "session running" notification shown during focus.
  * Scheduled notifications (pet hungry, daily reminder, streak): Session 18.
  */
 import * as Notifications from 'expo-notifications';
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
-    shouldShowAlert: true,
     shouldPlaySound: false,
     shouldSetBadge: false,
     shouldShowBanner: true,
@@ -29,6 +28,7 @@ export function formatEndTime(durationSeconds: number, now = Date.now()): string
 export async function showSessionNotification(
   petName: string,
   durationSeconds: number,
+  now = Date.now(),
 ): Promise<void> {
   const { status } = await Notifications.requestPermissionsAsync();
   if (status !== 'granted') return;
@@ -38,7 +38,7 @@ export async function showSessionNotification(
   activeNotificationId = await Notifications.scheduleNotificationAsync({
     content: {
       title: `${petName} is waiting... 🐣`,
-      body: `Session ends at ${formatEndTime(durationSeconds)} — stay focused!`,
+      body: `Session ends at ${formatEndTime(durationSeconds, now)} — stay focused!`,
       sticky: true,
       autoDismiss: false,
       data: { type: 'session_running' },
@@ -46,6 +46,7 @@ export async function showSessionNotification(
     trigger: null,
   });
 }
+
 
 export async function cancelSessionNotification(): Promise<void> {
   if (activeNotificationId === null) return;
