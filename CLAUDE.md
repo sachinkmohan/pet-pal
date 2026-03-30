@@ -56,8 +56,19 @@ src/
                      # helpers: getEvolutionStage(), getNextEvolutionStage(), sessionsToNextEvolution()
     Colors.ts        # PetPalColors palette (primary, accent, mood colors, etc.)
   services/
-    MoodService.ts   # calculateMood(MoodInput): MoodState — all 5 states, real-time calculation
-                     # also exports FEED_COOLDOWN_MS (20 hrs); import from here, never redefine
+    MoodService.ts          # calculateMood(MoodInput): MoodState — all 5 states, real-time calculation
+                            # also exports FEED_COOLDOWN_MS (20 hrs); import from here, never redefine
+    FocusService.ts         # Pure TS state machine: idle → active → completed
+                            # startSession(), timerComplete(), giveUp(), dispose()
+                            # No grace period — replaced by honest-reporting ("Save" / "Don't save — I cheated")
+    NotificationService.ts  # showSessionNotification(petName, durationSeconds) + cancelSessionNotification()
+                            # Shows persistent "Session ends at X:XX PM" notification on session start
+                            # No completion notification — end time in start notification is sufficient
+    FeedService.ts          # Pure TS feed logic (no RN deps): getFeedPetStage, getFeedPetSize,
+                            # canFeed, timeUntilNextFeed, feedsToNextStage, feedProgressPercent
+  storage/
+    recentDurations.ts      # addRecentDuration(existing, duration) — deduplicates, caps at 3
+                            # Used by Focus screen quick-start chips
 ```
 
 Everything persisted uses `STORAGE_KEYS` — never use raw strings. All storage access goes through `AppStorage.ts` helpers which handle `JSON.parse/stringify` automatically.
@@ -75,6 +86,7 @@ Domain components built so far (use these rather than re-implementing inline):
 - `evolution-celebration.tsx` — `<EvolutionCelebration visible petName={s} newStage={stage} totalSessions={n} onDismiss={fn} />` — modal overlay; conditionally mount (don't pass `visible=false`); dismiss handler must write new stage to `STORAGE_KEYS.EVOLUTION_STAGE` to prevent retrigger
 - `circular-slider.tsx` — `<CircularSlider value={n} onChange={fn} />` — circular drag picker for focus duration (1–60 min); uses `react-native-svg` + `PanResponder`; self-contained (SIZE=240); renders SVG arc + thumb + duration label overlay
 - `circular-countdown.tsx` — `<CircularCountdown totalSeconds={n} onComplete={fn} />` — depleting arc countdown timer; single interval on mount; `onCompleteRef` prevents stale closure; full-circle path uses two half-arcs; same geometry as `CircularSlider`
+- `grace-overlay.tsx` — 10-second countdown overlay (retained, not currently active); `onExpiredRef` prevents stale closure; fires `onExpired` at zero
 
 ### Theming
 
@@ -91,8 +103,13 @@ Domain components built so far (use these rather than re-implementing inline):
 
 - **Streak:** Both fed + ≥1 focus session required on the same day. Checked at midnight via `resetDailyDataIfNeeded()`.
 - **Feed cooldown:** 20 hours (not 24) — intentional habit-formation design.
+- **Feed taps:** 3 taps to complete a feed (reduced from 10 after UX research — 2–4 taps is the industry sweet spot for daily rituals).
+- **Feed pet (Mochi):** Separate fish pet on the Feed screen, independent of Pochi. Grows through daily feeding alone via `FeedService` stage thresholds (0/3/10/21/50/100 feeds).
 - **Mood:** Calculated in real-time via `calculateMood()` in `src/services/MoodService.ts`. Call after every session completion and every feed. Pass `screenTimeHours` once `ScreenTimeService` is wired (Phase 6).
 - **Evolution:** Driven by `totalSessionsEver` (never resets). Thresholds: 0/10/25/50/100/200 sessions.
+- **Focus session honesty:** No cheat detection. On session complete, user chooses "Save session" or "Don't save — I cheated". Data only written on explicit save.
+- **Session notification:** Static end-time notification only ("Session ends at X:XX PM"). No completion notification — eliminates Android Doze mode timing issues.
+- **Recent durations:** Last 3 unique saved session durations in `STORAGE_KEYS.RECENT_DURATIONS`. Shown as quick-start chips on Focus screen; hidden on fresh install.
 - **Screen time:** Optional — app fully functional without `USAGE_STATS_ENABLED`. Never penalise mood if disabled.
 - **Pet never dies** — only reaches `sick` state. Always recoverable.
 

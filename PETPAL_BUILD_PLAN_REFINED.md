@@ -73,7 +73,7 @@ PetPal is a **virtual pet + focus app** for Android. Your pet Pochi's mood and g
 - [ ] Focus session with circular slider timer (1-60 min)
 - [ ] AppState cheat detection with 10-second grace period
 - [ ] Screen-off allowed without penalty (no proximity sensor needed)
-- [ ] Tap to feed mechanic (10 taps, once per 20hrs)
+- [x] Tap to feed mechanic (3 taps, once per 20hrs)
 - [ ] Unified daily streak counter (feed + focus)
 - [ ] Local storage (no backend needed)
 - [ ] 1 calm background music track during focus (Rain)
@@ -245,11 +245,11 @@ PetPalApp/
 **Elements:**
 - Hungry pet animation (🥺 eyes)
 - "[Name] is hungry! Tap to feed" message
-- Tap counter (0/10 taps)
+- Tap counter (0/3 taps)
 - Food particle animation on each tap
 - **Haptic feedback on each tap** (vibration)
 - Pet reacts to each tap (shakes, opens mouth)
-- Completion animation when 10 taps done
+- Completion animation when 3 taps done
 - "Come back in Xhr" cooldown message (20hr reset)
 
 **If already fed:**
@@ -436,7 +436,7 @@ await BackgroundService.start(timerTask, options);
 
 ### Rules
 - Available once every **20 hours** (not 24 — gradual earlier habit)
-- Requires **10 taps** to complete feeding
+- Requires **3 taps** to complete feeding
 - Each tap: food particle animation + haptic vibration + pet reacts
 - Completing feeding counts toward **daily streak** (combined with focus)
 - Missing 2+ days: pet looks extra hungry 🥺
@@ -460,7 +460,7 @@ const canFeed = hoursSinceLastFeed >= 20;
 ### Single Daily Streak
 A day counts toward your streak if **both conditions are met**:
 
-1. ✅ Fed the pet (completed 10 taps)
+1. ✅ Fed the pet (completed 3 taps)
 2. ✅ Completed at least 1 focus session (any duration)
 
 ### Rules
@@ -725,22 +725,34 @@ Sized for **45-60 minute development sessions**. Each chunk is a self-contained 
 ### Phase 4 — Feed Mechanic (2-3 sessions)
 
 **Session 14: Feed Screen**
-- [ ] Build Feed screen with hungry pet display
-- [ ] Tap counter (0/10) with progress indicator
-- [ ] Pet reacts on each tap (simple scale animation)
-- [ ] Add haptic feedback on each tap (`expo-haptics`)
-- [ ] Completion animation when 10 taps done
+- [x] Build Feed screen with hungry/feeding/full/cooldown states
+- [x] Tap counter with dot progress indicator (3 taps — reduced from 10 after UX research; 2–4 taps is the industry sweet spot for daily rituals)
+- [x] Pet reacts on each tap (scale bounce animation)
+- [x] Add haptic feedback on each tap (`expo-haptics` — `notificationAsync(Warning)` used instead of `selectionAsync`/`impactAsync` for reliable Android support)
+- [x] Completion: triple `notificationAsync(Success)` at 0/180/360ms for dopamine hit
+- [x] Food particle animation on each tap (🫧 bubbles float up and fade, 4 particles per tap with randomised x-offset and duration)
+
+**Unplanned — FeedService (TDD, 15 tests)**
+- [x] `getFeedPetStage(totalFeeds)` — 6 growth stages (Tiny/Small/Medium/Big/Large/Giant), thresholds front-loaded at 0/3/10/21/50/100 feeds (based on habit-formation research)
+- [x] `getFeedPetSize(stage)` — font size 36/52/68/84/100/120 — same 🐟 emoji scales up visually
+- [x] `canFeed(lastFedTime)` — true if never fed or 20+ hours elapsed
+- [x] `timeUntilNextFeed(lastFedTime)` — formats remaining cooldown as "4h", "30m", "2h 30m"
+- [x] `feedsToNextStage(totalFeeds)` — feeds remaining to next growth stage, `null` at max
+- [x] `feedProgressPercent(totalFeeds)` — 0–100% progress within current stage band
+- [x] Growth progress bar always visible, showing feeds to next stage + percentage
+- [x] Separate fish pet (Mochi) — independent of Pochi, grows through daily feeding
+- [x] Storage keys added: `FEED_PET_NAME`, `TOTAL_FEEDS`, `LAST_FED_TIME`
 
 **Session 15: Feed Logic & Cooldown**
-- [ ] Implement 20hr cooldown logic
-- [ ] Show "Come back in Xhr" when on cooldown
-- [ ] Show happy/full pet when already fed
+- [x] Implement 20hr cooldown logic
+- [x] Show "Come back in Xhr" when on cooldown
+- [x] Show happy/full state when already fed
 - [ ] Wire feed complete → recalculate mood
 - [ ] Wire feed complete → update streak data
 - [ ] Update Home screen feed button indicator
 
 **Session 16 (if needed): Feed Polish**
-- [ ] Add food particle animation on each tap
+- [x] Food particle animation on each tap *(moved up, done in Session 14)*
 - [ ] More expressive pet reactions (mouth open, shaking)
 - [ ] Test cooldown edge cases (timezone changes, etc.)
 
