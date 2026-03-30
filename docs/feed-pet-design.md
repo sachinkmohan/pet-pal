@@ -50,10 +50,13 @@ No new assets needed. The size jump alone makes each evolution feel visually sat
 ## Storage Keys
 
 ```typescript
-FEED_PET_NAME: 'feedPetName'       // string, default "Mochi" — renameable in future settings
-FEED_PET_STAGE: 'feedPetStage'     // number 1–6, derived from TOTAL_FEEDS but cached
-TOTAL_FEEDS: 'totalFeeds'          // already exists — drives evolution
+FEED_PET_NAME: 'feedPetName'   // string, default "Mochi" — renameable in future settings
+TOTAL_FEEDS:   'totalFeeds'    // number, lifetime feeds completed — drives stage computation
+LAST_FED_TIME: 'lastFedTime'   // number (ms timestamp), last completed feed
 ```
+
+> `FEED_PET_STAGE` is **derived**, not stored. Call `getFeedPetStage(totalFeeds)` from
+> `FeedService` at render time — always computed from `TOTAL_FEEDS`, never persisted separately.
 
 ---
 

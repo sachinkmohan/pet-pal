@@ -71,8 +71,8 @@ Front-loaded based on habit formation research (Duolingo, Finch, academic studie
 
 ### Feed Screen UI (`feed.tsx`)
 Four states:
-- **Hungry** — 10 empty dots, tap Mochi to feed
-- **Feeding** — dots fill with each tap, bounce animation + haptic on each
+- **Hungry** — 3 empty dots, tap Mochi to feed
+- **Feeding** — dots fill across 3 taps, bounce animation + haptic on each
 - **Just completed** — "Mochi is full! 🎉", triple-buzz celebration haptic
 - **On cooldown** — happy message, "Come back in Xhr"
 
@@ -88,8 +88,9 @@ Progress bar always visible showing feeds remaining to next growth stage.
 
 ### Storage Keys Added
 ```
-FEED_PET_NAME    — string, default "Mochi"
-RECENT_DURATIONS — number[], last 3 unique saved session durations (minutes)
+FEED_PET_NAME  — string, default "Mochi"
+TOTAL_FEEDS    — number, lifetime feeds completed (drives stage computation)
+LAST_FED_TIME  — number (ms timestamp), last completed feed
 ```
 
 ---

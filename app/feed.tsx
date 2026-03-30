@@ -180,6 +180,10 @@ export default function FeedScreen() {
             onPress={handleTap}
             disabled={onCooldown || justCompleted}
             style={styles.fishWrapper}
+            accessibilityRole="button"
+            accessibilityLabel="Feed pet"
+            accessibilityHint="Tap three times to feed the pet"
+            accessibilityState={{ disabled: onCooldown || justCompleted }}
           >
             <Animated.Text
               style={[

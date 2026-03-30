@@ -436,7 +436,7 @@ await BackgroundService.start(timerTask, options);
 
 ### Rules
 - Available once every **20 hours** (not 24 — gradual earlier habit)
-- Requires **10 taps** to complete feeding
+- Requires **3 taps** to complete feeding
 - Each tap: food particle animation + haptic vibration + pet reacts
 - Completing feeding counts toward **daily streak** (combined with focus)
 - Missing 2+ days: pet looks extra hungry 🥺

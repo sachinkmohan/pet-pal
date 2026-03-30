@@ -1,4 +1,5 @@
-import { getFeedPetStage, getFeedPetSize, canFeed, timeUntilNextFeed, feedsToNextStage, feedProgressPercent } from '../FeedService';
+import { getFeedPetStage, getFeedPetSize, canFeed, timeUntilNextFeed, feedsToNextStage, feedProgressPercent } from '@/src/services/FeedService';
+import { FEED_COOLDOWN_MS } from '@/src/services/MoodService';
 
 describe('feedsToNextStage', () => {
   test('returns feeds needed from the start of stage 1', () => {
@@ -53,18 +54,17 @@ describe('timeUntilNextFeed', () => {
 
 describe('canFeed', () => {
   const NOW = 1_000_000_000_000;
-  const TWENTY_HOURS = 20 * 60 * 60 * 1000;
 
   test('returns true when never fed before', () => {
     expect(canFeed(null, NOW)).toBe(true);
   });
 
   test('returns true when 20+ hours have passed', () => {
-    expect(canFeed(NOW - TWENTY_HOURS, NOW)).toBe(true);
+    expect(canFeed(NOW - FEED_COOLDOWN_MS, NOW)).toBe(true);
   });
 
   test('returns false when under 20 hours have passed', () => {
-    expect(canFeed(NOW - TWENTY_HOURS + 1, NOW)).toBe(false);
+    expect(canFeed(NOW - FEED_COOLDOWN_MS + 1, NOW)).toBe(false);
   });
 });
 

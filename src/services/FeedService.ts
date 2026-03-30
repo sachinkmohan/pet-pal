@@ -1,8 +1,10 @@
+import { FEED_COOLDOWN_MS } from '@/src/services/MoodService';
+
 const STAGE_THRESHOLDS = [0, 3, 10, 21, 50, 100];
 
 const STAGE_SIZES = [36, 52, 68, 84, 100, 120];
 
-export const FEED_COOLDOWN_MS = 20 * 60 * 60 * 1000; // 20 hours
+export { FEED_COOLDOWN_MS };
 
 export function feedsToNextStage(totalFeeds: number): number | null {
   const nextThreshold = STAGE_THRESHOLDS.find((t) => t > totalFeeds);
@@ -37,7 +39,7 @@ export function canFeed(lastFedTime: number | null, now = Date.now()): boolean {
 }
 
 export function timeUntilNextFeed(lastFedTime: number, now = Date.now()): string {
-  const msLeft = FEED_COOLDOWN_MS - (now - lastFedTime);
+  const msLeft = Math.max(0, FEED_COOLDOWN_MS - (now - lastFedTime));
   const totalMins = Math.ceil(msLeft / 60000);
   const h = Math.floor(totalMins / 60);
   const m = totalMins % 60;
