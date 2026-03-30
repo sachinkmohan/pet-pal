@@ -1,6 +1,6 @@
-// PetPal app color palette
+// PetBloom app color palette
 
-export const PetPalColors = {
+export const PetBloomColors = {
   // Primary — calm teal/blue
   primary: '#0a7ea4',
   primaryLight: 'rgba(10,126,164,0.15)',

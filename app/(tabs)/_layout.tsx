@@ -26,7 +26,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="focus"
         options={{
-          title: 'Focus',
+          title: 'Step Away',
           tabBarIcon: ({ color }) => <IconSymbol size={28} name="timer" color={color} />,
         }}
       />

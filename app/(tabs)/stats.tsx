@@ -1,10 +1,10 @@
-import { StyleSheet, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { StyleSheet, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
+import { ThemedText } from "@/components/themed-text";
+import { ThemedView } from "@/components/themed-view";
 
-const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 export default function StatsScreen() {
   return (
@@ -17,7 +17,9 @@ export default function StatsScreen() {
           <View style={styles.todayRow}>
             <View style={styles.todayStat}>
               <ThemedText style={styles.todayValue}>0m</ThemedText>
-              <ThemedText style={styles.todayLabel}>Focus time</ThemedText>
+              <ThemedText style={styles.todayLabel}>
+                Screen Away Time
+              </ThemedText>
             </View>
             <View style={styles.divider} />
             <View style={styles.todayStat}>
@@ -44,8 +46,12 @@ export default function StatsScreen() {
         </View>
 
         <View style={styles.screenTimePrompt}>
-          <ThemedText style={styles.promptText}>📱 Enable screen time tracking</ThemedText>
-          <ThemedText style={styles.promptSub}>Let Pochi react to how much you use your phone</ThemedText>
+          <ThemedText style={styles.promptText}>
+            📱 Enable screen time tracking
+          </ThemedText>
+          <ThemedText style={styles.promptSub}>
+            Let Pochi react to how much you use your phone
+          </ThemedText>
           <View style={styles.enableButton}>
             <ThemedText style={styles.enableText}>Enable</ThemedText>
           </View>
@@ -67,33 +73,33 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 28,
-    fontWeight: '700',
+    fontWeight: "700",
   },
   todayCard: {
     borderRadius: 16,
     padding: 20,
-    backgroundColor: 'rgba(0,0,0,0.05)',
+    backgroundColor: "rgba(0,0,0,0.05)",
     gap: 12,
   },
   cardTitle: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: "600",
     opacity: 0.6,
-    textTransform: 'uppercase',
+    textTransform: "uppercase",
     letterSpacing: 1,
   },
   todayRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
   },
   todayStat: {
     flex: 1,
-    alignItems: 'center',
+    alignItems: "center",
     gap: 4,
   },
   todayValue: {
     fontSize: 28,
-    fontWeight: '700',
+    fontWeight: "700",
   },
   todayLabel: {
     fontSize: 13,
@@ -102,32 +108,32 @@ const styles = StyleSheet.create({
   divider: {
     width: 1,
     height: 48,
-    backgroundColor: 'rgba(0,0,0,0.1)',
+    backgroundColor: "rgba(0,0,0,0.1)",
   },
   chartCard: {
     borderRadius: 16,
     padding: 20,
-    backgroundColor: 'rgba(0,0,0,0.05)',
+    backgroundColor: "rgba(0,0,0,0.05)",
     gap: 16,
   },
   chart: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
+    flexDirection: "row",
+    alignItems: "flex-end",
     height: 100,
     gap: 8,
   },
   bar: {
     flex: 1,
-    alignItems: 'center',
+    alignItems: "center",
     gap: 4,
-    height: '100%',
-    justifyContent: 'flex-end',
+    height: "100%",
+    justifyContent: "flex-end",
   },
   barFill: {
-    width: '100%',
+    width: "100%",
     height: 4,
     borderRadius: 4,
-    backgroundColor: '#0a7ea4',
+    backgroundColor: "#0a7ea4",
     opacity: 0.3,
   },
   barLabel: {
@@ -135,8 +141,8 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   weekSummary: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    justifyContent: "space-between",
   },
   weekStat: {
     fontSize: 14,
@@ -145,28 +151,28 @@ const styles = StyleSheet.create({
   screenTimePrompt: {
     borderRadius: 16,
     padding: 20,
-    backgroundColor: 'rgba(0,0,0,0.05)',
+    backgroundColor: "rgba(0,0,0,0.05)",
     gap: 6,
-    alignItems: 'center',
+    alignItems: "center",
   },
   promptText: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   promptSub: {
     fontSize: 13,
     opacity: 0.6,
-    textAlign: 'center',
+    textAlign: "center",
   },
   enableButton: {
     marginTop: 8,
     paddingHorizontal: 24,
     paddingVertical: 10,
     borderRadius: 12,
-    backgroundColor: '#0a7ea4',
+    backgroundColor: "#0a7ea4",
   },
   enableText: {
-    color: '#fff',
-    fontWeight: '600',
+    color: "#fff",
+    fontWeight: "600",
   },
 });

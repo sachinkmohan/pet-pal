@@ -1,13 +1,13 @@
 import * as Haptics from "expo-haptics";
 import { useFocusEffect } from "expo-router";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Animated, Pressable, StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
 import { useColorScheme } from "@/hooks/use-color-scheme";
-import { PetPalColors } from "@/src/constants/Colors";
+import { PetBloomColors } from "@/src/constants/Colors";
 import {
   canFeed,
   feedProgressPercent,
@@ -16,6 +16,7 @@ import {
   getFeedPetStage,
   timeUntilNextFeed,
 } from "@/src/services/FeedService";
+import { calculateMood } from "@/src/services/MoodService";
 import { getItem, removeItem, setItem } from "@/src/storage/AppStorage";
 import { STORAGE_KEYS } from "@/src/storage/keys";
 
@@ -37,9 +38,39 @@ export default function FeedScreen() {
   const [tapCount, setTapCount] = useState(0);
   const [justCompleted, setJustCompleted] = useState(false);
   const [particles, setParticles] = useState<Particle[]>([]);
+  const [sessionsToday, setSessionsToday] = useState(0);
+  const [statsEnabled, setStatsEnabled] = useState(false);
 
   const scaleAnim = useRef(new Animated.Value(1)).current;
+  const hatchAnim = useRef(new Animated.Value(0)).current;
+  const eggShakeAnim = useRef(new Animated.Value(0)).current;
   const particleIdRef = useRef(0);
+
+  // Derived: is this the very first feed ever?
+  const isFirstFeed = totalFeeds === 0 && !justCompleted;
+  const isHatching = justCompleted && totalFeeds === 1;
+
+  // Trigger hatch animation when first feed completes
+  useEffect(() => {
+    if (!isHatching) return;
+    Animated.sequence([
+      // Rapid shakes
+      Animated.timing(eggShakeAnim, { toValue: 1, duration: 70, useNativeDriver: true }),
+      Animated.timing(eggShakeAnim, { toValue: -1, duration: 70, useNativeDriver: true }),
+      Animated.timing(eggShakeAnim, { toValue: 1, duration: 70, useNativeDriver: true }),
+      Animated.timing(eggShakeAnim, { toValue: -1, duration: 70, useNativeDriver: true }),
+      Animated.timing(eggShakeAnim, { toValue: 0.5, duration: 70, useNativeDriver: true }),
+      Animated.timing(eggShakeAnim, { toValue: 0, duration: 60, useNativeDriver: true }),
+      // Reveal fish
+      Animated.spring(hatchAnim, {
+        toValue: 1,
+        useNativeDriver: true,
+        damping: 12,
+        stiffness: 180,
+        mass: 0.8,
+      }),
+    ]).start();
+  }, [isHatching]);
 
   const stage = getFeedPetStage(totalFeeds);
   const fishSize = getFeedPetSize(stage);
@@ -47,21 +78,27 @@ export default function FeedScreen() {
   const remaining = feedsToNextStage(totalFeeds);
   const progressPercent = feedProgressPercent(totalFeeds);
   const textMuted = isDark
-    ? PetPalColors.textMutedDark
-    : PetPalColors.textMuted;
-  const trackColor = isDark ? PetPalColors.surfaceDark : PetPalColors.surface;
+    ? PetBloomColors.textMutedDark
+    : PetBloomColors.textMuted;
+  const trackColor = isDark ? PetBloomColors.surfaceDark : PetBloomColors.surface;
 
   const loadData = useCallback(async () => {
-    const [name, feeds, lastFed] = await Promise.all([
+    const [name, feeds, lastFed, sessions, stats] = await Promise.all([
       getItem<string>(STORAGE_KEYS.FEED_PET_NAME),
       getItem<number>(STORAGE_KEYS.TOTAL_FEEDS),
       getItem<number>(STORAGE_KEYS.LAST_FED_TIME),
+      getItem<number>(STORAGE_KEYS.SESSIONS_TODAY),
+      getItem<boolean>(STORAGE_KEYS.USAGE_STATS_ENABLED),
     ]);
     setFishName(name ?? "Mochi");
     setTotalFeeds(feeds ?? 0);
     setLastFedTime(lastFed ?? null);
+    setSessionsToday(sessions ?? 0);
+    setStatsEnabled(stats ?? false);
     setTapCount(0);
     setJustCompleted(false);
+    hatchAnim.setValue(0);
+    eggShakeAnim.setValue(0);
   }, []);
 
   useFocusEffect(
@@ -97,7 +134,7 @@ export default function FeedScreen() {
     setParticles((prev) => [...prev, ...newParticles]);
   }
 
-  function animateTap() {
+  function animateTap(isEgg: boolean) {
     Animated.sequence([
       Animated.spring(scaleAnim, {
         toValue: 1.3,
@@ -111,13 +148,22 @@ export default function FeedScreen() {
         speed: 20,
       }),
     ]).start();
+
+    if (isEgg) {
+      // Wiggle the egg on each tap
+      Animated.sequence([
+        Animated.timing(eggShakeAnim, { toValue: 1, duration: 60, useNativeDriver: true }),
+        Animated.timing(eggShakeAnim, { toValue: -1, duration: 60, useNativeDriver: true }),
+        Animated.timing(eggShakeAnim, { toValue: 0, duration: 60, useNativeDriver: true }),
+      ]).start();
+    }
   }
 
   async function handleTap() {
     if (!feedAvailable || justCompleted) return;
 
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-    animateTap();
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+    animateTap(isFirstFeed);
     spawnParticles();
 
     const next = tapCount + 1;
@@ -135,15 +181,16 @@ export default function FeedScreen() {
       setTotalFeeds(newTotal);
       setLastFedTime(now);
       setJustCompleted(true);
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      calculateMood({ sessionsCompleted: sessionsToday, lastFedTime: now, screenTimeEnabled: statsEnabled });
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       setTimeout(
         () =>
-          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success),
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error),
         180,
       );
       setTimeout(
         () =>
-          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success),
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error),
         360,
       );
     }
@@ -164,8 +211,10 @@ export default function FeedScreen() {
     : "";
 
   let headingText = `${fishName} is hungry! 🥺`;
-  if (justCompleted) headingText = `${fishName} is full! 🎉`;
+  if (isHatching) headingText = `Meet ${fishName}! 🐟`;
+  else if (justCompleted) headingText = `${fishName} is full! 🎉`;
   else if (onCooldown) headingText = `${fishName} is happy!`;
+  else if (isFirstFeed && tapCount === 0) headingText = `Tap to hatch ${fishName}!`;
   else if (tapCount > 0) headingText = `${TOTAL_TAPS - tapCount} more taps!`;
 
   return (
@@ -174,25 +223,85 @@ export default function FeedScreen() {
         {/* Heading */}
         <ThemedText style={styles.heading}>{headingText}</ThemedText>
 
-        {/* Fish */}
+        {/* Fish / Egg */}
         <View style={styles.fishArea}>
           <Pressable
             onPress={handleTap}
             disabled={onCooldown || justCompleted}
             style={styles.fishWrapper}
             accessibilityRole="button"
-            accessibilityLabel="Feed pet"
+            accessibilityLabel={isFirstFeed ? "Hatch pet" : "Feed pet"}
             accessibilityHint="Tap three times to feed the pet"
             accessibilityState={{ disabled: onCooldown || justCompleted }}
           >
-            <Animated.Text
-              style={[
-                styles.fish,
-                { fontSize: fishSize, transform: [{ scale: scaleAnim }] },
-              ]}
-            >
-              🐟
-            </Animated.Text>
+            {/* Fixed-size container so egg and fish overlay each other during hatch */}
+            <Animated.View style={[styles.petContainer, { transform: [{ scale: scaleAnim }] }]}>
+              {/* Egg — visible before first feed and fades out during hatch */}
+              {(isFirstFeed || isHatching) && (
+                <Animated.Text
+                  style={[
+                    styles.petAbsolute,
+                    {
+                      fontSize: 96,
+                      opacity: hatchAnim.interpolate({
+                        inputRange: [0, 0.35, 0.6],
+                        outputRange: [1, 1, 0],
+                        extrapolate: 'clamp',
+                      }),
+                      transform: [
+                        {
+                          rotate: eggShakeAnim.interpolate({
+                            inputRange: [-1, 0, 1],
+                            outputRange: ['-18deg', '0deg', '18deg'],
+                          }),
+                        },
+                        {
+                          scale: hatchAnim.interpolate({
+                            inputRange: [0, 0.35, 0.6],
+                            outputRange: [1, 1.25, 0.4],
+                            extrapolate: 'clamp',
+                          }),
+                        },
+                      ],
+                    },
+                  ]}
+                >
+                  🥚
+                </Animated.Text>
+              )}
+
+              {/* Fish — always rendered after first feed; springs in during hatch */}
+              {!isFirstFeed && (
+                <Animated.Text
+                  style={[
+                    styles.petAbsolute,
+                    {
+                      fontSize: fishSize,
+                      opacity: isHatching
+                        ? hatchAnim.interpolate({
+                            inputRange: [0, 0.5, 1],
+                            outputRange: [0, 0, 1],
+                            extrapolate: 'clamp',
+                          })
+                        : 1,
+                      transform: [
+                        {
+                          scale: isHatching
+                            ? hatchAnim.interpolate({
+                                inputRange: [0, 0.5, 0.85, 1],
+                                outputRange: [0, 0, 1.25, 1],
+                                extrapolate: 'clamp',
+                              })
+                            : 1,
+                        },
+                      ],
+                    },
+                  ]}
+                >
+                  🐟
+                </Animated.Text>
+              )}
+            </Animated.View>
           </Pressable>
           {particles.map((p) => (
             <Animated.Text
@@ -245,10 +354,10 @@ export default function FeedScreen() {
                   {
                     backgroundColor:
                       i < tapCount
-                        ? PetPalColors.accent
+                        ? PetBloomColors.accent
                         : isDark
-                          ? PetPalColors.surfaceDark
-                          : PetPalColors.surface,
+                          ? PetBloomColors.surfaceDark
+                          : PetBloomColors.surface,
                   },
                 ]}
               />
@@ -315,6 +424,16 @@ const styles = StyleSheet.create({
   fish: {
     lineHeight: 140,
   },
+  petContainer: {
+    width: 160,
+    height: 160,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  petAbsolute: {
+    position: 'absolute',
+    textAlign: 'center',
+  },
   particle: {
     position: "absolute",
     fontSize: 18,
@@ -341,7 +460,7 @@ const styles = StyleSheet.create({
   progressFill: {
     height: "100%",
     borderRadius: 3,
-    backgroundColor: PetPalColors.accent,
+    backgroundColor: PetBloomColors.accent,
   },
   dotsRow: {
     flexDirection: "row",

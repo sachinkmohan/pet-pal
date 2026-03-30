@@ -4,7 +4,7 @@ import Svg, { Circle, Path } from 'react-native-svg';
 
 import { ThemedText } from '@/components/themed-text';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { PetPalColors } from '@/src/constants/Colors';
+import { PetBloomColors } from '@/src/constants/Colors';
 
 // Same geometry as CircularSlider for visual consistency
 const SIZE = 240;
@@ -84,8 +84,8 @@ export function CircularCountdown({ totalSeconds, onComplete }: Props) {
   const progress = totalSeconds > 0 ? remaining / totalSeconds : 0;
   const angle = progress * 359.99; // avoid degenerate full-circle at 100%
   const arcPath = buildArcPath(angle);
-  const trackColor = isDark ? PetPalColors.surfaceDark : PetPalColors.surface;
-  const textMuted = isDark ? PetPalColors.textMutedDark : PetPalColors.textMuted;
+  const trackColor = isDark ? PetBloomColors.surfaceDark : PetBloomColors.surface;
+  const textMuted = isDark ? PetBloomColors.textMutedDark : PetBloomColors.textMuted;
 
   return (
     <View style={styles.wrapper}>
@@ -104,7 +104,7 @@ export function CircularCountdown({ totalSeconds, onComplete }: Props) {
         {arcPath !== '' && (
           <Path
             d={arcPath}
-            stroke={PetPalColors.primary}
+            stroke={PetBloomColors.primary}
             strokeWidth={STROKE_WIDTH}
             fill="none"
             strokeLinecap="round"

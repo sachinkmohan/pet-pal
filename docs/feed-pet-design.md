@@ -76,7 +76,7 @@ LAST_FED_TIME: 'lastFedTime'   // number (ms timestamp), last completed feed
 ## Design Rules
 
 - **Never regress** — Mochi never shrinks, even if the user misses days.
-- **Never die** — consistent with PetPal's "pet never dies" principle.
+- **Never die** — consistent with PetBloom's "pet never dies" principle.
 - **Name is persistent** — stored in `FEED_PET_NAME`, default "Mochi", editable later
   from a settings screen.
 - **Evolution celebration** — reuse `EvolutionCelebration` component from Pochi's flow.

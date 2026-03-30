@@ -1,45 +1,50 @@
-import { useFocusEffect } from 'expo-router';
-import { useNavigation } from 'expo-router';
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useFocusEffect, useNavigation } from "expo-router";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Modal, Pressable, ScrollView, StyleSheet, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
-import { CircularCountdown } from '@/components/circular-countdown';
-import { CircularSlider } from '@/components/circular-slider';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { useColorScheme } from '@/hooks/use-color-scheme';
-import { PetPalColors } from '@/src/constants/Colors';
-import { EVOLUTION_CONFIG, getEvolutionStage } from '@/src/constants/PetStates';
-import { calculateMood } from '@/src/services/MoodService';
-import { showSessionNotification, cancelSessionNotification } from '@/src/services/NotificationService';
-import { createFocusStateMachine, FocusStateMachine, SessionState } from '@/src/services/FocusService';
-import { getItem, setItem } from '@/src/storage/AppStorage';
-import { STORAGE_KEYS } from '@/src/storage/keys';
-import { addRecentDuration } from '@/src/storage/recentDurations';
-import { resetDailyDataIfNeeded } from '@/src/storage/seedData';
-
+import { CircularCountdown } from "@/components/circular-countdown";
+import { CircularSlider } from "@/components/circular-slider";
+import { ThemedText } from "@/components/themed-text";
+import { ThemedView } from "@/components/themed-view";
+import { useColorScheme } from "@/hooks/use-color-scheme";
+import { PetBloomColors } from "@/src/constants/Colors";
+import { EVOLUTION_CONFIG, getEvolutionStage } from "@/src/constants/PetStates";
+import {
+  createFocusStateMachine,
+  FocusStateMachine,
+  SessionState,
+} from "@/src/services/FocusService";
+import { calculateMood } from "@/src/services/MoodService";
+import {
+  cancelSessionNotification,
+  showSessionNotification,
+} from "@/src/services/NotificationService";
+import { getItem, setItem } from "@/src/storage/AppStorage";
+import { STORAGE_KEYS } from "@/src/storage/keys";
+import { addRecentDuration } from "@/src/storage/recentDurations";
+import { resetDailyDataIfNeeded } from "@/src/storage/seedData";
 
 export default function FocusScreen() {
-  const isDark = useColorScheme() === 'dark';
+  const isDark = useColorScheme() === "dark";
   const navigation = useNavigation();
 
   // Setup state
   const [duration, setDuration] = useState(25);
   const [musicEnabled, setMusicEnabled] = useState(false);
-  const [petEmoji, setPetEmoji] = useState('🥚');
-  const [petName, setPetName] = useState('Pochi');
+  const [petEmoji, setPetEmoji] = useState("🥚");
+  const [petName, setPetName] = useState("Pochi");
   const [recentDurations, setRecentDurations] = useState<number[]>([]);
 
   // Session state (driven by FocusStateMachine)
-  const [sessionState, setSessionState] = useState<SessionState>('idle');
+  const [sessionState, setSessionState] = useState<SessionState>("idle");
   const [sessionComplete, setSessionComplete] = useState(false);
   const [completedDuration, setCompletedDuration] = useState(0);
 
   // Machine ref — single instance per screen mount
   const machineRef = useRef<FocusStateMachine | null>(null);
   const sessionDurationRef = useRef(duration);
-  const sessionActive = sessionState === 'active';
+  const sessionActive = sessionState === "active";
 
   const loadData = useCallback(async () => {
     const [name, totalSessions, recents] = await Promise.all([
@@ -49,22 +54,24 @@ export default function FocusScreen() {
     ]);
     const stage = getEvolutionStage(totalSessions ?? 0);
     setPetEmoji(EVOLUTION_CONFIG[stage].emoji);
-    setPetName(name ?? 'Pochi');
+    setPetName(name ?? "Pochi");
     setRecentDurations(recents ?? []);
   }, []);
 
-  useFocusEffect(useCallback(() => {
-    loadData();
-    return () => {
-      machineRef.current?.giveUp();
-      cancelSessionNotification();
-    };
-  }, [loadData]));
+  useFocusEffect(
+    useCallback(() => {
+      loadData();
+      return () => {
+        machineRef.current?.giveUp();
+        cancelSessionNotification();
+      };
+    }, [loadData]),
+  );
 
   // Hide tab bar during active session
   useEffect(() => {
     navigation.setOptions({
-      tabBarStyle: sessionActive ? { display: 'none' } : undefined,
+      tabBarStyle: sessionActive ? { display: "none" } : undefined,
     });
   }, [sessionActive, navigation]);
 
@@ -72,7 +79,7 @@ export default function FocusScreen() {
   useEffect(() => {
     const machine = createFocusStateMachine((state) => {
       setSessionState(state);
-      if (state === 'completed') {
+      if (state === "completed") {
         // Don't save yet — wait for user to confirm or deny
         cancelSessionNotification();
         setCompletedDuration(sessionDurationRef.current);
@@ -88,7 +95,7 @@ export default function FocusScreen() {
   }, []);
 
   function handleStart(overrideSecs?: number) {
-    if (sessionState !== 'idle' || !machineRef.current) return;
+    if (sessionState !== "idle" || !machineRef.current) return;
     const totalSecs = overrideSecs ?? duration * 60;
     sessionDurationRef.current = totalSecs / 60;
     if (overrideSecs !== undefined) setDuration(overrideSecs / 60);
@@ -104,15 +111,21 @@ export default function FocusScreen() {
   async function saveSessionData(sessionDuration: number) {
     await resetDailyDataIfNeeded();
 
-    const [totalSessions, sessionsToday, focusTimeToday, lastFedTime, statsEnabled, recents] =
-      await Promise.all([
-        getItem<number>(STORAGE_KEYS.TOTAL_SESSIONS_EVER),
-        getItem<number>(STORAGE_KEYS.SESSIONS_TODAY),
-        getItem<number>(STORAGE_KEYS.FOCUS_TIME_TODAY),
-        getItem<number>(STORAGE_KEYS.LAST_FED_TIME),
-        getItem<boolean>(STORAGE_KEYS.USAGE_STATS_ENABLED),
-        getItem<number[]>(STORAGE_KEYS.RECENT_DURATIONS),
-      ]);
+    const [
+      totalSessions,
+      sessionsToday,
+      focusTimeToday,
+      lastFedTime,
+      statsEnabled,
+      recents,
+    ] = await Promise.all([
+      getItem<number>(STORAGE_KEYS.TOTAL_SESSIONS_EVER),
+      getItem<number>(STORAGE_KEYS.SESSIONS_TODAY),
+      getItem<number>(STORAGE_KEYS.FOCUS_TIME_TODAY),
+      getItem<number>(STORAGE_KEYS.LAST_FED_TIME),
+      getItem<boolean>(STORAGE_KEYS.USAGE_STATS_ENABLED),
+      getItem<number[]>(STORAGE_KEYS.RECENT_DURATIONS),
+    ]);
 
     const newTotal = (totalSessions ?? 0) + 1;
     const newSessionsToday = (sessionsToday ?? 0) + 1;
@@ -150,10 +163,12 @@ export default function FocusScreen() {
   }
 
   // Theme-aware colors
-  const chipBg = isDark ? PetPalColors.surfaceDark : PetPalColors.primaryLight;
-  const toggleBg = isDark ? PetPalColors.surfaceDark : PetPalColors.surface;
-  const textMuted = isDark ? PetPalColors.textMutedDark : PetPalColors.textMuted;
-  const cardBg = isDark ? PetPalColors.backgroundDark : PetPalColors.background;
+  const chipBg = isDark ? PetBloomColors.surfaceDark : PetBloomColors.primaryLight;
+  const toggleBg = isDark ? PetBloomColors.surfaceDark : PetBloomColors.surface;
+  const textMuted = isDark
+    ? PetBloomColors.textMutedDark
+    : PetBloomColors.textMuted;
+  const cardBg = isDark ? PetBloomColors.backgroundDark : PetBloomColors.background;
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -161,7 +176,9 @@ export default function FocusScreen() {
         {/* ── Active session view ── */}
         {sessionActive ? (
           <View style={styles.sessionContainer}>
-            <ThemedText style={styles.title}>Stay focused!</ThemedText>
+            <ThemedText style={styles.title}>
+              You're with {petName} ☁️
+            </ThemedText>
 
             <CircularCountdown
               totalSeconds={duration * 60}
@@ -169,7 +186,7 @@ export default function FocusScreen() {
             />
 
             <ThemedText style={[styles.sessionHint, { color: textMuted }]}>
-              {petName} is cheering you on {petEmoji}
+              Phone down. {petName} needs you.
             </ThemedText>
 
             <Pressable
@@ -180,7 +197,7 @@ export default function FocusScreen() {
               onPress={handleGiveUp}
             >
               <ThemedText style={[styles.giveUpText, { color: textMuted }]}>
-                Give up
+                Give Up
               </ThemedText>
             </Pressable>
           </View>
@@ -191,7 +208,7 @@ export default function FocusScreen() {
             contentContainerStyle={styles.scrollContent}
             alwaysBounceVertical={false}
           >
-            <ThemedText style={styles.title}>Focus Session</ThemedText>
+            <ThemedText style={styles.title}>Time with {petName}</ThemedText>
 
             <View style={styles.sliderWrapper}>
               <CircularSlider value={duration} onChange={setDuration} />
@@ -211,7 +228,9 @@ export default function FocusScreen() {
                     style={({ pressed }) => [
                       styles.chip,
                       {
-                        backgroundColor: isActive ? PetPalColors.primary : chipBg,
+                        backgroundColor: isActive
+                          ? PetBloomColors.primary
+                          : chipBg,
                         opacity: pressed ? 0.8 : 1,
                       },
                     ]}
@@ -220,7 +239,11 @@ export default function FocusScreen() {
                     <ThemedText
                       style={[
                         styles.chipText,
-                        { color: isActive ? PetPalColors.white : PetPalColors.primary },
+                        {
+                          color: isActive
+                            ? PetBloomColors.white
+                            : PetBloomColors.primary,
+                        },
                       ]}
                     >
                       {min}m
@@ -233,7 +256,7 @@ export default function FocusScreen() {
             <View style={styles.petPreview}>
               <ThemedText style={styles.petEmoji}>{petEmoji}</ThemedText>
               <ThemedText style={[styles.petCaption, { color: textMuted }]}>
-                {petName} is ready to focus!
+                {petName} is waiting for you
               </ThemedText>
             </View>
 
@@ -251,7 +274,11 @@ export default function FocusScreen() {
               <View
                 style={[
                   styles.togglePill,
-                  { backgroundColor: musicEnabled ? PetPalColors.primary : PetPalColors.border },
+                  {
+                    backgroundColor: musicEnabled
+                      ? PetBloomColors.primary
+                      : PetBloomColors.border,
+                  },
                 ]}
               >
                 <View
@@ -266,7 +293,10 @@ export default function FocusScreen() {
             <Pressable
               style={({ pressed }) => [
                 styles.startButton,
-                { backgroundColor: PetPalColors.primary, opacity: pressed ? 0.85 : 1 },
+                {
+                  backgroundColor: PetBloomColors.primary,
+                  opacity: pressed ? 0.85 : 1,
+                },
               ]}
               onPress={() => handleStart()}
             >
@@ -277,10 +307,15 @@ export default function FocusScreen() {
 
             {__DEV__ && (
               <Pressable
-                style={({ pressed }) => [styles.testButton, { opacity: pressed ? 0.7 : 1 }]}
+                style={({ pressed }) => [
+                  styles.testButton,
+                  { opacity: pressed ? 0.7 : 1 },
+                ]}
                 onPress={() => handleStart(10)}
               >
-                <ThemedText style={[styles.testButtonText, { color: textMuted }]}>
+                <ThemedText
+                  style={[styles.testButtonText, { color: textMuted }]}
+                >
                   ⚡ 10s test
                 </ThemedText>
               </Pressable>
@@ -300,20 +335,28 @@ export default function FocusScreen() {
         <View style={styles.backdrop}>
           <View style={[styles.celebCard, { backgroundColor: cardBg }]}>
             <ThemedText style={styles.celebEmoji}>{petEmoji}</ThemedText>
-            <ThemedText style={styles.celebHeading}>Session complete!</ThemedText>
+            <ThemedText style={styles.celebHeading}>
+              You showed up! 🎉
+            </ThemedText>
             <ThemedText style={[styles.celebSub, { color: textMuted }]}>
-              You focused for {completedDuration} minute{completedDuration !== 1 ? 's' : ''}.
-              {'\n'}{petName} is so proud of you!
+              {completedDuration} minute{completedDuration !== 1 ? "s" : ""}{" "}
+              with {petName}.{"\n"}
+              {petName} loved every minute.
             </ThemedText>
 
             <Pressable
               style={({ pressed }) => [
                 styles.saveButton,
-                { backgroundColor: PetPalColors.primary, opacity: pressed ? 0.85 : 1 },
+                {
+                  backgroundColor: PetBloomColors.primary,
+                  opacity: pressed ? 0.85 : 1,
+                },
               ]}
               onPress={handleSaveSession}
             >
-              <ThemedText style={styles.buttonText}>Save session 🌟</ThemedText>
+              <ThemedText style={styles.buttonText}>
+                Count this time 🌟
+              </ThemedText>
             </Pressable>
 
             <Pressable
@@ -324,7 +367,7 @@ export default function FocusScreen() {
               onPress={handleDontSave}
             >
               <ThemedText style={[styles.cheatText, { color: textMuted }]}>
-                Don't save — I cheated
+                Don't save — I looked at my phone
               </ThemedText>
             </Pressable>
           </View>
@@ -346,19 +389,19 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingTop: 16,
     paddingBottom: 32,
-    alignItems: 'center',
+    alignItems: "center",
     gap: 24,
   },
   title: {
     fontSize: 24,
-    fontWeight: '700',
-    alignSelf: 'flex-start',
+    fontWeight: "700",
+    alignSelf: "flex-start",
   },
   sliderWrapper: {
-    alignItems: 'center',
+    alignItems: "center",
   },
   presets: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 10,
   },
   chip: {
@@ -368,17 +411,17 @@ const styles = StyleSheet.create({
   },
   chipText: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   recentsLabel: {
     fontSize: 11,
-    fontWeight: '500',
+    fontWeight: "500",
     letterSpacing: 0.8,
-    textTransform: 'uppercase',
-    alignSelf: 'flex-start',
+    textTransform: "uppercase",
+    alignSelf: "flex-start",
   },
   petPreview: {
-    alignItems: 'center',
+    alignItems: "center",
     gap: 6,
   },
   petEmoji: {
@@ -387,13 +430,13 @@ const styles = StyleSheet.create({
   },
   petCaption: {
     fontSize: 14,
-    fontStyle: 'italic',
+    fontStyle: "italic",
   },
   musicRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 12,
-    width: '100%',
+    width: "100%",
     borderRadius: 16,
     padding: 16,
   },
@@ -406,7 +449,7 @@ const styles = StyleSheet.create({
   },
   musicLabel: {
     fontSize: 15,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   musicSub: {
     fontSize: 12,
@@ -415,24 +458,24 @@ const styles = StyleSheet.create({
     width: 44,
     height: 26,
     borderRadius: 13,
-    justifyContent: 'center',
+    justifyContent: "center",
   },
   toggleThumb: {
     width: 22,
     height: 22,
     borderRadius: 11,
-    backgroundColor: PetPalColors.white,
+    backgroundColor: PetBloomColors.white,
   },
   startButton: {
-    width: '100%',
+    width: "100%",
     borderRadius: 16,
     paddingVertical: 18,
-    alignItems: 'center',
+    alignItems: "center",
   },
   startButtonText: {
-    color: PetPalColors.white,
+    color: PetBloomColors.white,
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: "700",
   },
   testButton: {
     paddingVertical: 8,
@@ -443,38 +486,38 @@ const styles = StyleSheet.create({
   // Active session view
   sessionContainer: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     paddingHorizontal: 24,
     gap: 24,
   },
   sessionHint: {
     fontSize: 16,
-    textAlign: 'center',
+    textAlign: "center",
   },
   giveUpButton: {
-    position: 'absolute',
+    position: "absolute",
     bottom: 40,
     paddingHorizontal: 24,
     paddingVertical: 10,
   },
   giveUpText: {
     fontSize: 14,
-    textDecorationLine: 'underline',
+    textDecorationLine: "underline",
   },
   // Completion modal
   backdrop: {
     flex: 1,
-    backgroundColor: PetPalColors.scrim,
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: PetBloomColors.scrim,
+    justifyContent: "center",
+    alignItems: "center",
     paddingHorizontal: 24,
   },
   celebCard: {
-    width: '100%',
+    width: "100%",
     borderRadius: 24,
     padding: 28,
-    alignItems: 'center',
+    alignItems: "center",
     gap: 12,
   },
   celebEmoji: {
@@ -483,25 +526,25 @@ const styles = StyleSheet.create({
   },
   celebHeading: {
     fontSize: 26,
-    fontWeight: '800',
-    textAlign: 'center',
+    fontWeight: "800",
+    textAlign: "center",
   },
   celebSub: {
     fontSize: 15,
-    textAlign: 'center',
+    textAlign: "center",
     lineHeight: 22,
   },
   saveButton: {
-    width: '100%',
+    width: "100%",
     borderRadius: 16,
     paddingVertical: 16,
-    alignItems: 'center',
+    alignItems: "center",
     marginTop: 8,
   },
   buttonText: {
-    color: PetPalColors.white,
+    color: PetBloomColors.white,
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: "700",
   },
   cheatButton: {
     paddingVertical: 10,
@@ -509,6 +552,6 @@ const styles = StyleSheet.create({
   },
   cheatText: {
     fontSize: 14,
-    textDecorationLine: 'underline',
+    textDecorationLine: "underline",
   },
 });

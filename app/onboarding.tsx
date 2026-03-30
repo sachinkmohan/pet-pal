@@ -1,3 +1,4 @@
+import * as Notifications from 'expo-notifications';
 import { router } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import {
@@ -13,15 +14,17 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { normalizePetName } from '@/src/utils/petName';
 import { setItem } from '@/src/storage/AppStorage';
 import { STORAGE_KEYS } from '@/src/storage/keys';
 
-type Step = 'welcome' | 'name' | 'how-it-works' | 'permissions';
-const STEPS: Step[] = ['welcome', 'name', 'how-it-works', 'permissions'];
+type Step = 'welcome' | 'meet-pochi' | 'meet-mochi' | 'how-it-works' | 'notifications';
+const STEPS: Step[] = ['welcome', 'meet-pochi', 'meet-mochi', 'how-it-works', 'notifications'];
 
 export default function OnboardingScreen() {
   const [stepIndex, setStepIndex] = useState(0);
-  const [petName, setPetName] = useState('Pochi');
+  const [pochiName, setPochiName] = useState('Pochi');
+  const [mochiName, setMochiName] = useState('Mochi');
 
   const step = STEPS[stepIndex];
 
@@ -32,19 +35,16 @@ export default function OnboardingScreen() {
   }
 
   async function finishOnboarding() {
-    await setItem(STORAGE_KEYS.PET_NAME, petName.trim() || 'Pochi');
-    await setItem(STORAGE_KEYS.ONBOARDING_COMPLETE, true);
+    await Promise.all([
+      setItem(STORAGE_KEYS.PET_NAME, normalizePetName(pochiName, 'Pochi')),
+      setItem(STORAGE_KEYS.FEED_PET_NAME, normalizePetName(mochiName, 'Mochi')),
+      setItem(STORAGE_KEYS.ONBOARDING_COMPLETE, true),
+    ]);
     router.replace('/(tabs)');
   }
 
-  async function skipPermissions() {
-    await setItem(STORAGE_KEYS.USAGE_STATS_ENABLED, false);
-    await finishOnboarding();
-  }
-
-  async function enablePermissions() {
-    // UsageStats requires manual Settings navigation on Android — wire in Session 21
-    await setItem(STORAGE_KEYS.USAGE_STATS_ENABLED, true);
+  async function handleEnableNotifications() {
+    await Notifications.requestPermissionsAsync();
     await finishOnboarding();
   }
 
@@ -65,19 +65,29 @@ export default function OnboardingScreen() {
             <WelcomeStep onNext={goNext} />
           </StepWrapper>
         )}
-        {step === 'name' && (
-          <StepWrapper key="name">
-            <NameStep petName={petName} onChange={setPetName} onNext={goNext} />
+        {step === 'meet-pochi' && (
+          <StepWrapper key="meet-pochi">
+            <MeetPochiStep pochiName={pochiName} onChange={setPochiName} onNext={goNext} />
+          </StepWrapper>
+        )}
+        {step === 'meet-mochi' && (
+          <StepWrapper key="meet-mochi">
+            <MeetMochiStep mochiName={mochiName} onChange={setMochiName} onNext={goNext} />
           </StepWrapper>
         )}
         {step === 'how-it-works' && (
           <StepWrapper key="how-it-works">
-            <HowItWorksStep onNext={goNext} />
+            <HowItWorksStep pochiName={normalizePetName(pochiName, 'Pochi')} mochiName={normalizePetName(mochiName, 'Mochi')} onNext={goNext} />
           </StepWrapper>
         )}
-        {step === 'permissions' && (
-          <StepWrapper key="permissions">
-            <PermissionsStep onEnable={enablePermissions} onSkip={skipPermissions} />
+        {step === 'notifications' && (
+          <StepWrapper key="notifications">
+            <NotificationsStep
+              pochiName={normalizePetName(pochiName, 'Pochi')}
+              mochiName={normalizePetName(mochiName, 'Mochi')}
+              onEnable={handleEnableNotifications}
+              onSkip={finishOnboarding}
+            />
           </StepWrapper>
         )}
       </KeyboardAvoidingView>
@@ -116,38 +126,57 @@ function StepWrapper({ children }: { children: React.ReactNode }) {
   );
 }
 
-// ─── Floating egg (Welcome) ───────────────────────────────────────────────────
+// ─── Floating eggs (Welcome) ──────────────────────────────────────────────────
 
-function FloatingEgg() {
-  const translateY = useRef(new Animated.Value(0)).current;
+function FloatingEggs() {
+  const translateY1 = useRef(new Animated.Value(0)).current;
+  const translateY2 = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(translateY, {
-          toValue: -14,
-          duration: 1600,
-          useNativeDriver: true,
-          easing: Easing.inOut(Easing.sin),
-        }),
-        Animated.timing(translateY, {
-          toValue: 0,
-          duration: 1600,
-          useNativeDriver: true,
-          easing: Easing.inOut(Easing.sin),
-        }),
-      ]),
-    ).start();
+    const float = (val: Animated.Value) =>
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(val, {
+            toValue: -14,
+            duration: 1600,
+            useNativeDriver: true,
+            easing: Easing.inOut(Easing.sin),
+          }),
+          Animated.timing(val, {
+            toValue: 0,
+            duration: 1600,
+            useNativeDriver: true,
+            easing: Easing.inOut(Easing.sin),
+          }),
+        ]),
+      );
+
+    const anim1 = float(translateY1);
+    const anim2 = float(translateY2);
+
+    // Stagger second egg
+    setTimeout(() => anim2.start(), 500);
+    anim1.start();
+
+    return () => {
+      anim1.stop();
+      anim2.stop();
+    };
   }, []);
 
   return (
-    <Animated.Text style={[styles.petEmoji, { transform: [{ translateY }] }]}>
-      🥚
-    </Animated.Text>
+    <View style={styles.eggsRow}>
+      <Animated.Text style={[styles.petEmoji, { transform: [{ translateY: translateY1 }] }]}>
+        🥚
+      </Animated.Text>
+      <Animated.Text style={[styles.petEmoji, { transform: [{ translateY: translateY2 }] }]}>
+        🥚
+      </Animated.Text>
+    </View>
   );
 }
 
-// ─── Wiggling egg (Name step) ─────────────────────────────────────────────────
+// ─── Wiggling egg ─────────────────────────────────────────────────────────────
 
 function WigglingEgg({ trigger }: { trigger: string }) {
   const rotate = useRef(new Animated.Value(0)).current;
@@ -179,32 +208,38 @@ function WelcomeStep({ onNext }: { onNext: () => void }) {
   return (
     <View style={styles.step}>
       <View style={styles.center}>
-        <FloatingEgg />
-        <Text style={styles.heading}>Meet your new friend!</Text>
-        <Text style={styles.subheading}>Your habits shape who they become</Text>
+        <FloatingEggs />
+        <Text style={styles.heading}>Meet your new friends!</Text>
+        <Text style={styles.subheading}>Two companions. Two habits. One better you.</Text>
       </View>
       <PrimaryButton label="Let's go →" onPress={onNext} />
     </View>
   );
 }
 
-function NameStep({
-  petName,
+function MeetPochiStep({
+  pochiName,
   onChange,
   onNext,
 }: {
-  petName: string;
+  pochiName: string;
   onChange: (v: string) => void;
   onNext: () => void;
 }) {
+  const displayName = pochiName.trim() || 'Pochi';
   return (
     <View style={styles.step}>
       <View style={styles.center}>
-        <WigglingEgg trigger={petName} />
-        <Text style={styles.heading}>What will you name me?</Text>
+        <WigglingEgg trigger={pochiName} />
+        <Text style={styles.heading}>Your focus buddy</Text>
+        <Text style={styles.subheading}>
+          Put your phone down and I'll grow.{'\n'}
+          The more time you spend with me,{'\n'}
+          the stronger I become — 6 stages.
+        </Text>
         <TextInput
           style={styles.nameInput}
-          value={petName}
+          value={pochiName}
           onChangeText={(v) => onChange(v.slice(0, 12))}
           placeholder="Pochi"
           placeholderTextColor="rgba(0,0,0,0.3)"
@@ -214,24 +249,73 @@ function NameStep({
           returnKeyType="done"
           onSubmitEditing={onNext}
         />
-        <Text style={styles.charCount}>{petName.length}/12</Text>
+        <Text style={styles.charCount}>{pochiName.length}/12</Text>
       </View>
-      <PrimaryButton
-        label={`Name them ${petName.trim() || 'Pochi'} →`}
-        onPress={onNext}
-        disabled={petName.trim().length === 0}
-      />
+      <View style={styles.bottomGroup}>
+        <Text style={styles.renameHint}>You can rename them anytime in Settings</Text>
+        <PrimaryButton
+          label={`Name them ${displayName} →`}
+          onPress={onNext}
+          disabled={pochiName.trim().length === 0}
+        />
+      </View>
     </View>
   );
 }
 
-const HOW_ITEMS = [
-  { emoji: '🍎', title: 'Feed me daily', desc: 'Tap to feed once a day' },
-  { emoji: '🎯', title: 'Focus with me', desc: 'I grow when you focus' },
-  { emoji: '📊', title: 'Watch me evolve', desc: 'The more you focus, the stronger I get' },
+function MeetMochiStep({
+  mochiName,
+  onChange,
+  onNext,
+}: {
+  mochiName: string;
+  onChange: (v: string) => void;
+  onNext: () => void;
+}) {
+  const displayName = mochiName.trim() || 'Mochi';
+  return (
+    <View style={styles.step}>
+      <View style={styles.center}>
+        <WigglingEgg trigger={mochiName} />
+        <Text style={styles.heading}>Your little fish</Text>
+        <Text style={styles.subheading}>
+          This egg holds a hungry fish.{'\n'}
+          Feed them once a day and they'll grow.{'\n'}
+          Miss too many days and they get unhappy.
+        </Text>
+        <TextInput
+          style={styles.nameInput}
+          value={mochiName}
+          onChangeText={(v) => onChange(v.slice(0, 12))}
+          placeholder="Mochi"
+          placeholderTextColor="rgba(0,0,0,0.3)"
+          maxLength={12}
+          autoFocus
+          autoCapitalize="words"
+          returnKeyType="done"
+          onSubmitEditing={onNext}
+        />
+        <Text style={styles.charCount}>{mochiName.length}/12</Text>
+      </View>
+      <View style={styles.bottomGroup}>
+        <Text style={styles.renameHint}>You can rename them anytime in Settings</Text>
+        <PrimaryButton
+          label={`Name them ${displayName} →`}
+          onPress={onNext}
+          disabled={mochiName.trim().length === 0}
+        />
+      </View>
+    </View>
+  );
+}
+
+const HOW_ITEMS = (pochiName: string, mochiName: string) => [
+  { emoji: '🐟', title: `Feed ${mochiName} daily`, desc: 'Tap 3 times once a day to keep them happy' },
+  { emoji: '🐾', title: `Spend time with ${pochiName}`, desc: "Put your phone down and they'll grow" },
+  { emoji: '✨', title: 'Watch both grow', desc: `${pochiName} gets stronger, ${mochiName} gets bigger` },
 ] as const;
 
-function HowItWorksStep({ onNext }: { onNext: () => void }) {
+function HowItWorksStep({ pochiName, mochiName, onNext }: { pochiName: string; mochiName: string; onNext: () => void }) {
   const anim0 = useRef(new Animated.Value(0)).current;
   const anim1 = useRef(new Animated.Value(0)).current;
   const anim2 = useRef(new Animated.Value(0)).current;
@@ -251,11 +335,13 @@ function HowItWorksStep({ onNext }: { onNext: () => void }) {
     ).start();
   }, []);
 
+  const items = HOW_ITEMS(pochiName, mochiName);
+
   return (
     <View style={styles.step}>
       <Text style={[styles.heading, styles.howHeading]}>Here's how it works</Text>
       <View style={styles.howItems}>
-        {HOW_ITEMS.map((item, i) => {
+        {items.map((item, i) => {
           const anim = anims[i];
           const translateY = anim.interpolate({
             inputRange: [0, 1],
@@ -279,10 +365,14 @@ function HowItWorksStep({ onNext }: { onNext: () => void }) {
   );
 }
 
-function PermissionsStep({
+function NotificationsStep({
+  pochiName,
+  mochiName,
   onEnable,
   onSkip,
 }: {
+  pochiName: string;
+  mochiName: string;
   onEnable: () => void;
   onSkip: () => void;
 }) {
@@ -311,16 +401,15 @@ function PermissionsStep({
     <View style={styles.step}>
       <View style={styles.center}>
         <Animated.Text style={[styles.petEmoji, { transform: [{ scale: pulse }] }]}>
-          📱
+          🔔
         </Animated.Text>
-        <Text style={styles.heading}>Want me to track your screen time too?</Text>
+        <Text style={styles.heading}>Don't let us starve!</Text>
         <Text style={styles.subheading}>
-          This helps me react to how much you use your phone.
-          {'\n'}The app works great without it.
+          Allow notifications so {pochiName} and {mochiName} can remind you when it's time to feed or focus.
         </Text>
       </View>
-      <View style={styles.permButtons}>
-        <PrimaryButton label="Enable screen time" onPress={onEnable} />
+      <View style={styles.notifButtons}>
+        <PrimaryButton label="Allow notifications" onPress={onEnable} />
         <TouchableOpacity style={styles.skipButton} onPress={onSkip}>
           <Text style={styles.skipText}>Skip for now</Text>
         </TouchableOpacity>
@@ -418,6 +507,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 16,
   },
+  eggsRow: {
+    flexDirection: 'row',
+    gap: 24,
+    marginBottom: 8,
+  },
   petEmoji: {
     fontSize: 96,
     marginBottom: 8,
@@ -456,6 +550,14 @@ const styles = StyleSheet.create({
     color: 'rgba(17,24,28,0.4)',
     alignSelf: 'flex-end',
   },
+  bottomGroup: {
+    gap: 10,
+  },
+  renameHint: {
+    fontSize: 13,
+    color: 'rgba(17,24,28,0.4)',
+    textAlign: 'center',
+  },
   howItems: {
     flex: 1,
     justifyContent: 'center',
@@ -484,7 +586,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: 'rgba(17,24,28,0.6)',
   },
-  permButtons: {
+  notifButtons: {
     gap: 12,
   },
   primaryButton: {
