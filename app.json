@@ -53,8 +53,9 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "8efb7019-1e72-4755-aec0-2d88d61a09bb"
+        "projectId": "d10b398c-001b-4fbb-9be4-e9906d835670"
       }
-    }
+    },
+    "owner": "ecmalayalam"
   }
 }
