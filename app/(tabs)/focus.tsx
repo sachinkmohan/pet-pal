@@ -16,9 +16,9 @@ import { showSessionNotification, cancelSessionNotification } from '@/src/servic
 import { createFocusStateMachine, FocusStateMachine, SessionState } from '@/src/services/FocusService';
 import { getItem, setItem } from '@/src/storage/AppStorage';
 import { STORAGE_KEYS } from '@/src/storage/keys';
+import { addRecentDuration } from '@/src/storage/recentDurations';
 import { resetDailyDataIfNeeded } from '@/src/storage/seedData';
 
-const PRESETS = [5, 15, 30, 60] as const;
 
 export default function FocusScreen() {
   const isDark = useColorScheme() === 'dark';
@@ -29,6 +29,7 @@ export default function FocusScreen() {
   const [musicEnabled, setMusicEnabled] = useState(false);
   const [petEmoji, setPetEmoji] = useState('🥚');
   const [petName, setPetName] = useState('Pochi');
+  const [recentDurations, setRecentDurations] = useState<number[]>([]);
 
   // Session state (driven by FocusStateMachine)
   const [sessionState, setSessionState] = useState<SessionState>('idle');
@@ -44,13 +45,15 @@ export default function FocusScreen() {
   const sessionActive = sessionState === 'active';
 
   const loadData = useCallback(async () => {
-    const [name, totalSessions] = await Promise.all([
+    const [name, totalSessions, recents] = await Promise.all([
       getItem<string>(STORAGE_KEYS.PET_NAME),
       getItem<number>(STORAGE_KEYS.TOTAL_SESSIONS_EVER),
+      getItem<number[]>(STORAGE_KEYS.RECENT_DURATIONS),
     ]);
     const stage = getEvolutionStage(totalSessions ?? 0);
     setPetEmoji(EVOLUTION_CONFIG[stage].emoji);
     setPetName(name ?? 'Pochi');
+    setRecentDurations(recents ?? []);
   }, []);
 
   useFocusEffect(useCallback(() => {
@@ -102,24 +105,28 @@ export default function FocusScreen() {
   async function saveSessionData(sessionDuration: number) {
     await resetDailyDataIfNeeded();
 
-    const [totalSessions, sessionsToday, focusTimeToday, lastFedTime, statsEnabled] =
+    const [totalSessions, sessionsToday, focusTimeToday, lastFedTime, statsEnabled, recents] =
       await Promise.all([
         getItem<number>(STORAGE_KEYS.TOTAL_SESSIONS_EVER),
         getItem<number>(STORAGE_KEYS.SESSIONS_TODAY),
         getItem<number>(STORAGE_KEYS.FOCUS_TIME_TODAY),
         getItem<number>(STORAGE_KEYS.LAST_FED_TIME),
         getItem<boolean>(STORAGE_KEYS.USAGE_STATS_ENABLED),
+        getItem<number[]>(STORAGE_KEYS.RECENT_DURATIONS),
       ]);
 
     const newTotal = (totalSessions ?? 0) + 1;
     const newSessionsToday = (sessionsToday ?? 0) + 1;
     const newFocusTime = (focusTimeToday ?? 0) + sessionDuration;
+    const newRecents = addRecentDuration(recents ?? [], sessionDuration);
 
     await Promise.all([
       setItem(STORAGE_KEYS.TOTAL_SESSIONS_EVER, newTotal),
       setItem(STORAGE_KEYS.SESSIONS_TODAY, newSessionsToday),
       setItem(STORAGE_KEYS.FOCUS_TIME_TODAY, newFocusTime),
+      setItem(STORAGE_KEYS.RECENT_DURATIONS, newRecents),
     ]);
+    setRecentDurations(newRecents);
 
     calculateMood({
       sessionsCompleted: newSessionsToday,
@@ -191,8 +198,13 @@ export default function FocusScreen() {
               <CircularSlider value={duration} onChange={setDuration} />
             </View>
 
+            {recentDurations.length > 0 && (
+              <ThemedText style={[styles.recentsLabel, { color: textMuted }]}>
+                recent
+              </ThemedText>
+            )}
             <View style={styles.presets}>
-              {PRESETS.map((min) => {
+              {recentDurations.map((min) => {
                 const isActive = duration === min;
                 return (
                   <Pressable
@@ -204,7 +216,7 @@ export default function FocusScreen() {
                         opacity: pressed ? 0.8 : 1,
                       },
                     ]}
-                    onPress={() => setDuration(min)}
+                    onPress={() => handleStart(min * 60)}
                   >
                     <ThemedText
                       style={[
@@ -357,6 +369,13 @@ const styles = StyleSheet.create({
   chipText: {
     fontSize: 14,
     fontWeight: '600',
+  },
+  recentsLabel: {
+    fontSize: 11,
+    fontWeight: '500',
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+    alignSelf: 'flex-start',
   },
   petPreview: {
     alignItems: 'center',

@@ -702,6 +702,8 @@ Sized for **45-60 minute development sessions**. Each chunk is a self-contained 
 - [x] `giveUp()` handles both `active → idle` and `completed → idle` (for the don't-save path)
 - [x] Tab bar hidden during active session via `navigation.setOptions`
 - [x] Persistent notification shown on session start ("Session ends at X:XX PM") via `expo-notifications`; dismissed on end/give-up
+- [x] Completion notification removed — session end time in the start notification is sufficient; eliminates Android Doze timing accuracy problem entirely
+- [x] Recent durations: last 3 unique saved session durations stored in `STORAGE_KEYS.RECENT_DURATIONS`; shown as quick-start chips on Focus screen (replaces static presets); tapping a chip starts the session immediately; chips hidden on fresh install
 
 **Session 12: Session Integration**
 - [ ] Wire session complete → increment sessionsToday + totalSessionsEver
