@@ -1,9 +1,10 @@
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { EvolutionCelebration } from '@/components/evolution-celebration';
+import { IconSymbol } from '@/components/ui/icon-symbol';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { XpProgressBar } from '@/components/xp-progress-bar';
@@ -140,14 +141,25 @@ export default function HomeScreen() {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scrollContent}
         >
-          {/* Header: Greeting + Date */}
+          {/* Header: Greeting + Date + Settings */}
           <View style={styles.header}>
-            <ThemedText style={styles.greeting}>
-              {getGreeting()}, {petName}!
-            </ThemedText>
-            <ThemedText style={[styles.date, { color: textMuted }]}>
-              {getFormattedDate()}
-            </ThemedText>
+            <View style={styles.headerRow}>
+              <View style={styles.headerText}>
+                <ThemedText style={styles.greeting}>
+                  {getGreeting()}, {petName}!
+                </ThemedText>
+                <ThemedText style={[styles.date, { color: textMuted }]}>
+                  {getFormattedDate()}
+                </ThemedText>
+              </View>
+              <TouchableOpacity
+                onPress={() => router.push('/settings')}
+                hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                accessibilityLabel="Settings"
+                accessibilityRole="button">
+                <IconSymbol name="gearshape.fill" size={24} color={textMuted} />
+              </TouchableOpacity>
+            </View>
           </View>
 
           {/* Streak Badge */}
@@ -261,6 +273,15 @@ const styles = StyleSheet.create({
     gap: 20,
   },
   header: {
+    gap: 4,
+  },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+  },
+  headerText: {
+    flex: 1,
     gap: 4,
   },
   greeting: {

@@ -1,6 +1,6 @@
 import * as Haptics from "expo-haptics";
 import { useFocusEffect } from "expo-router";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Animated, Pressable, StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -39,7 +39,35 @@ export default function FeedScreen() {
   const [particles, setParticles] = useState<Particle[]>([]);
 
   const scaleAnim = useRef(new Animated.Value(1)).current;
+  const hatchAnim = useRef(new Animated.Value(0)).current;
+  const eggShakeAnim = useRef(new Animated.Value(0)).current;
   const particleIdRef = useRef(0);
+
+  // Derived: is this the very first feed ever?
+  const isFirstFeed = totalFeeds === 0 && !justCompleted;
+  const isHatching = justCompleted && totalFeeds === 1;
+
+  // Trigger hatch animation when first feed completes
+  useEffect(() => {
+    if (!isHatching) return;
+    Animated.sequence([
+      // Rapid shakes
+      Animated.timing(eggShakeAnim, { toValue: 1, duration: 70, useNativeDriver: true }),
+      Animated.timing(eggShakeAnim, { toValue: -1, duration: 70, useNativeDriver: true }),
+      Animated.timing(eggShakeAnim, { toValue: 1, duration: 70, useNativeDriver: true }),
+      Animated.timing(eggShakeAnim, { toValue: -1, duration: 70, useNativeDriver: true }),
+      Animated.timing(eggShakeAnim, { toValue: 0.5, duration: 70, useNativeDriver: true }),
+      Animated.timing(eggShakeAnim, { toValue: 0, duration: 60, useNativeDriver: true }),
+      // Reveal fish
+      Animated.spring(hatchAnim, {
+        toValue: 1,
+        useNativeDriver: true,
+        damping: 12,
+        stiffness: 180,
+        mass: 0.8,
+      }),
+    ]).start();
+  }, [isHatching]);
 
   const stage = getFeedPetStage(totalFeeds);
   const fishSize = getFeedPetSize(stage);
@@ -62,6 +90,8 @@ export default function FeedScreen() {
     setLastFedTime(lastFed ?? null);
     setTapCount(0);
     setJustCompleted(false);
+    hatchAnim.setValue(0);
+    eggShakeAnim.setValue(0);
   }, []);
 
   useFocusEffect(
@@ -97,7 +127,7 @@ export default function FeedScreen() {
     setParticles((prev) => [...prev, ...newParticles]);
   }
 
-  function animateTap() {
+  function animateTap(isEgg: boolean) {
     Animated.sequence([
       Animated.spring(scaleAnim, {
         toValue: 1.3,
@@ -111,13 +141,22 @@ export default function FeedScreen() {
         speed: 20,
       }),
     ]).start();
+
+    if (isEgg) {
+      // Wiggle the egg on each tap
+      Animated.sequence([
+        Animated.timing(eggShakeAnim, { toValue: 1, duration: 60, useNativeDriver: true }),
+        Animated.timing(eggShakeAnim, { toValue: -1, duration: 60, useNativeDriver: true }),
+        Animated.timing(eggShakeAnim, { toValue: 0, duration: 60, useNativeDriver: true }),
+      ]).start();
+    }
   }
 
   async function handleTap() {
     if (!feedAvailable || justCompleted) return;
 
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-    animateTap();
+    animateTap(isFirstFeed);
     spawnParticles();
 
     const next = tapCount + 1;
@@ -164,8 +203,10 @@ export default function FeedScreen() {
     : "";
 
   let headingText = `${fishName} is hungry! 🥺`;
-  if (justCompleted) headingText = `${fishName} is full! 🎉`;
+  if (isHatching) headingText = `Meet ${fishName}! 🐟`;
+  else if (justCompleted) headingText = `${fishName} is full! 🎉`;
   else if (onCooldown) headingText = `${fishName} is happy!`;
+  else if (isFirstFeed && tapCount === 0) headingText = `Tap to hatch ${fishName}!`;
   else if (tapCount > 0) headingText = `${TOTAL_TAPS - tapCount} more taps!`;
 
   return (
@@ -174,25 +215,85 @@ export default function FeedScreen() {
         {/* Heading */}
         <ThemedText style={styles.heading}>{headingText}</ThemedText>
 
-        {/* Fish */}
+        {/* Fish / Egg */}
         <View style={styles.fishArea}>
           <Pressable
             onPress={handleTap}
             disabled={onCooldown || justCompleted}
             style={styles.fishWrapper}
             accessibilityRole="button"
-            accessibilityLabel="Feed pet"
+            accessibilityLabel={isFirstFeed ? "Hatch pet" : "Feed pet"}
             accessibilityHint="Tap three times to feed the pet"
             accessibilityState={{ disabled: onCooldown || justCompleted }}
           >
-            <Animated.Text
-              style={[
-                styles.fish,
-                { fontSize: fishSize, transform: [{ scale: scaleAnim }] },
-              ]}
-            >
-              🐟
-            </Animated.Text>
+            {/* Fixed-size container so egg and fish overlay each other during hatch */}
+            <Animated.View style={[styles.petContainer, { transform: [{ scale: scaleAnim }] }]}>
+              {/* Egg — visible before first feed and fades out during hatch */}
+              {(isFirstFeed || isHatching) && (
+                <Animated.Text
+                  style={[
+                    styles.petAbsolute,
+                    {
+                      fontSize: 96,
+                      opacity: hatchAnim.interpolate({
+                        inputRange: [0, 0.35, 0.6],
+                        outputRange: [1, 1, 0],
+                        extrapolate: 'clamp',
+                      }),
+                      transform: [
+                        {
+                          rotate: eggShakeAnim.interpolate({
+                            inputRange: [-1, 0, 1],
+                            outputRange: ['-18deg', '0deg', '18deg'],
+                          }),
+                        },
+                        {
+                          scale: hatchAnim.interpolate({
+                            inputRange: [0, 0.35, 0.6],
+                            outputRange: [1, 1.25, 0.4],
+                            extrapolate: 'clamp',
+                          }),
+                        },
+                      ],
+                    },
+                  ]}
+                >
+                  🥚
+                </Animated.Text>
+              )}
+
+              {/* Fish — always rendered after first feed; springs in during hatch */}
+              {!isFirstFeed && (
+                <Animated.Text
+                  style={[
+                    styles.petAbsolute,
+                    {
+                      fontSize: fishSize,
+                      opacity: isHatching
+                        ? hatchAnim.interpolate({
+                            inputRange: [0, 0.5, 1],
+                            outputRange: [0, 0, 1],
+                            extrapolate: 'clamp',
+                          })
+                        : 1,
+                      transform: [
+                        {
+                          scale: isHatching
+                            ? hatchAnim.interpolate({
+                                inputRange: [0, 0.5, 0.85, 1],
+                                outputRange: [0, 0, 1.25, 1],
+                                extrapolate: 'clamp',
+                              })
+                            : 1,
+                        },
+                      ],
+                    },
+                  ]}
+                >
+                  🐟
+                </Animated.Text>
+              )}
+            </Animated.View>
           </Pressable>
           {particles.map((p) => (
             <Animated.Text
@@ -314,6 +415,16 @@ const styles = StyleSheet.create({
   },
   fish: {
     lineHeight: 140,
+  },
+  petContainer: {
+    width: 160,
+    height: 160,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  petAbsolute: {
+    position: 'absolute',
+    textAlign: 'center',
   },
   particle: {
     position: "absolute",
