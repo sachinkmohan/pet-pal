@@ -18,6 +18,7 @@ export const STORAGE_KEYS = {
   // Feed mechanic
   LAST_FED_TIME: 'lastFedTime', // timestamp (ms)
   TOTAL_FEEDS: 'totalFeeds',
+  FEED_PET_NAME: 'feedPetName', // string, default "Mochi"
 
   // Streak
   CURRENT_STREAK: 'currentStreak',

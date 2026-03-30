@@ -7,6 +7,69 @@ Format: `[Phase X · Session Y] — Description`
 
 ## [Unreleased]
 
+### Phase 4 · Sessions 14–15 (partial) — Feed Mechanic
+
+#### Added
+
+- `src/services/FeedService.ts` — pure TypeScript service (15 tests) with 6 functions:
+  - `getFeedPetStage(totalFeeds)` — maps lifetime feeds to 6 growth stages (Tiny/Small/Medium/Big/Large/Giant) at thresholds 0/3/10/21/50/100 (front-loaded, based on habit-formation research)
+  - `getFeedPetSize(stage)` — returns font size 36/52/68/84/100/120; same 🐟 emoji scales visually with stage
+  - `canFeed(lastFedTime, now?)` — true if never fed or ≥20 hours have elapsed
+  - `timeUntilNextFeed(lastFedTime, now?)` — formats remaining cooldown as "4h", "30m", "2h 30m"
+  - `feedsToNextStage(totalFeeds)` — feeds remaining until next growth stage; `null` at max
+  - `feedProgressPercent(totalFeeds)` — 0–100% progress within current stage band
+- `app/feed.tsx` — full Feed screen with 4 UI states:
+  - **Hungry** — 3 empty dots, tap Mochi to feed (3 taps — reduced from 10 after UX research; 2–4 taps is the industry sweet spot for daily rituals)
+  - **Feeding** — dots fill on each tap; scale bounce animation + `notificationAsync(Warning)` haptic per tap
+  - **Just completed** — "Mochi is full! 🎉"; triple `notificationAsync(Success)` at 0/180/360ms
+  - **On cooldown** — happy message + "Come back in Xhr"
+  - Growth progress bar always visible showing feeds to next stage + percentage
+  - Food particle animation on each tap: 4 🫧 bubble particles per tap, randomised x-offset (±40px) and duration (600–800ms), float up and fade via `Animated.parallel`, self-clean from state
+  - Mochi is a separate fish pet (independent of Pochi) — grows through daily feeding alone
+- `STORAGE_KEYS.FEED_PET_NAME`, `STORAGE_KEYS.TOTAL_FEEDS`, `STORAGE_KEYS.LAST_FED_TIME` — new keys in `src/storage/keys.ts`
+- `app.json` — added `VIBRATE` permission (required for `notificationAsync` on Android; takes effect on next dev build)
+
+#### Note on haptics
+`notificationAsync` is used for both tap and completion feedback instead of `selectionAsync`/`impactAsync` — the latter rely on `HapticFeedbackConstants` which isn't supported on all Android API levels; `notificationAsync` uses raw vibration patterns which always work.
+
+---
+
+## [Phase 3 · Session 11] — 2026-03-30
+
+### Added
+
+- `src/services/FocusService.ts` — pure TypeScript state machine (no React Native deps); 10 tests:
+  - States: `idle → active → completed`
+  - `startSession()`, `timerComplete()`, `giveUp()`, `dispose()`
+  - Grace period handling removed — screen lock triggers `background` indistinguishably from app-switching; enforcing it caused false failures. Replaced with honest-reporting flow: user chooses "Save session" or "Don't save — I cheated" after timer completes
+- `components/grace-overlay.tsx` — 10-second countdown overlay (retained for future use); uses `onExpiredRef` to prevent stale closure; fires `onExpired` callback at zero
+- `src/services/NotificationService.ts` — session notification service; 9 tests:
+  - `showSessionNotification(petName, durationSeconds)` — requests permission, shows persistent notification: title `"[petName] is waiting... 🐣"`, body `"Session ends at 3:45 PM — stay focused!"` (end time calculated from duration, 12hr format)
+  - `cancelSessionNotification()` — dismisses notification; called on complete, give-up, and failure dismiss
+  - `formatEndTime(durationSeconds, now?)` — pure injectable helper
+  - Completion notification deliberately removed — end time in start notification is sufficient; eliminates Android Doze mode scheduling delay entirely
+- `src/storage/recentDurations.ts` — `addRecentDuration(existing, duration)` pure function; deduplicates and caps at 3 entries; 5 tests
+- `STORAGE_KEYS.RECENT_DURATIONS` — stores `number[]` of last 3 unique saved session durations
+- `eas.json` — EAS build profiles: `development` (dev client APK), `preview` (APK for internal distribution), `production` (AAB for Play Store)
+- `docs/notifications.md` — notification behaviour documentation
+- `docs/background-timer-investigation.md` — writeup of `react-native-background-actions` investigation and why it was dropped for MVP
+
+### Changed
+
+- `app/(tabs)/focus.tsx` — major overhaul:
+  - Wired `FocusService` state machine; `machineRef` created once in `useEffect([], [])`, disposed on unmount
+  - Tab bar hidden during active session via `navigation.setOptions`
+  - Static preset chips (5/15/30/60 min) replaced with last 3 unique saved session durations; chips hidden on fresh install; "RECENT" label appears once sessions exist; tapping a chip starts the session immediately
+  - `handleStart` guarded with `sessionState !== 'idle'` check to prevent double-fire
+  - `cancelSessionNotification()` added to blur cleanup — prevents notification persisting if user navigates away via hardware back
+  - `petNameRef` dead code removed (was only used by the removed completion notification)
+  - 10-second test button wrapped in `__DEV__` — hidden in production builds
+- `app.json` — added `expo-notifications` plugin, `POST_NOTIFICATIONS` permission, EAS project ID
+- `package.json` — added `expo-notifications`, `expo-dev-client`
+- `@types/jest` — corrected from `^30.0.0` to `^29.5.0` to match `jest@^29.7.0`
+
+---
+
 ## [Phase 3 · Session 10] — 2026-03-24
 
 ### Added

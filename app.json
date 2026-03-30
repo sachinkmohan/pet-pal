@@ -21,7 +21,8 @@
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
       "permissions": [
-        "android.permission.POST_NOTIFICATIONS"
+        "android.permission.POST_NOTIFICATIONS",
+        "android.permission.VIBRATE"
       ],
       "package": "com.ecmalayalam.PetPal"
     },
