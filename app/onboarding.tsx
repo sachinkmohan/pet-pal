@@ -133,7 +133,7 @@ function FloatingEggs() {
   const translateY2 = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    const float = (val: Animated.Value, delay: number) =>
+    const float = (val: Animated.Value) =>
       Animated.loop(
         Animated.sequence([
           Animated.timing(val, {
@@ -151,8 +151,8 @@ function FloatingEggs() {
         ]),
       );
 
-    const anim1 = float(translateY1, 0);
-    const anim2 = float(translateY2, 0);
+    const anim1 = float(translateY1);
+    const anim2 = float(translateY2);
 
     // Stagger second egg
     setTimeout(() => anim2.start(), 500);

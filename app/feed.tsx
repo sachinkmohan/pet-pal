@@ -16,6 +16,7 @@ import {
   getFeedPetStage,
   timeUntilNextFeed,
 } from "@/src/services/FeedService";
+import { calculateMood } from "@/src/services/MoodService";
 import { getItem, removeItem, setItem } from "@/src/storage/AppStorage";
 import { STORAGE_KEYS } from "@/src/storage/keys";
 
@@ -37,6 +38,8 @@ export default function FeedScreen() {
   const [tapCount, setTapCount] = useState(0);
   const [justCompleted, setJustCompleted] = useState(false);
   const [particles, setParticles] = useState<Particle[]>([]);
+  const [sessionsToday, setSessionsToday] = useState(0);
+  const [statsEnabled, setStatsEnabled] = useState(false);
 
   const scaleAnim = useRef(new Animated.Value(1)).current;
   const hatchAnim = useRef(new Animated.Value(0)).current;
@@ -80,14 +83,18 @@ export default function FeedScreen() {
   const trackColor = isDark ? PetBloomColors.surfaceDark : PetBloomColors.surface;
 
   const loadData = useCallback(async () => {
-    const [name, feeds, lastFed] = await Promise.all([
+    const [name, feeds, lastFed, sessions, stats] = await Promise.all([
       getItem<string>(STORAGE_KEYS.FEED_PET_NAME),
       getItem<number>(STORAGE_KEYS.TOTAL_FEEDS),
       getItem<number>(STORAGE_KEYS.LAST_FED_TIME),
+      getItem<number>(STORAGE_KEYS.SESSIONS_TODAY),
+      getItem<boolean>(STORAGE_KEYS.USAGE_STATS_ENABLED),
     ]);
     setFishName(name ?? "Mochi");
     setTotalFeeds(feeds ?? 0);
     setLastFedTime(lastFed ?? null);
+    setSessionsToday(sessions ?? 0);
+    setStatsEnabled(stats ?? false);
     setTapCount(0);
     setJustCompleted(false);
     hatchAnim.setValue(0);
@@ -174,6 +181,7 @@ export default function FeedScreen() {
       setTotalFeeds(newTotal);
       setLastFedTime(now);
       setJustCompleted(true);
+      calculateMood({ sessionsCompleted: sessionsToday, lastFedTime: now, screenTimeEnabled: statsEnabled });
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       setTimeout(
         () =>

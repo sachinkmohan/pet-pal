@@ -30,12 +30,19 @@ export default function SettingsScreen() {
   const borderColor = isDark ? PetBloomColors.borderDark : PetBloomColors.border;
 
   const loadNames = useCallback(async () => {
-    const [pochi, mochi] = await Promise.all([
-      getItem<string>(STORAGE_KEYS.PET_NAME),
-      getItem<string>(STORAGE_KEYS.FEED_PET_NAME),
-    ]);
-    setPochiName(pochi ?? 'Pochi');
-    setMochiName(mochi ?? 'Mochi');
+    try {
+      const [pochi, mochi] = await Promise.all([
+        getItem<string>(STORAGE_KEYS.PET_NAME),
+        getItem<string>(STORAGE_KEYS.FEED_PET_NAME),
+      ]);
+      setPochiName(pochi ?? 'Pochi');
+      setMochiName(mochi ?? 'Mochi');
+    } catch (e) {
+      console.error('Failed to load pet names:', e);
+      setPochiName('Pochi');
+      setMochiName('Mochi');
+      setSaved(false);
+    }
   }, []);
 
   useFocusEffect(useCallback(() => { loadNames(); setSaved(false); }, [loadNames]));
@@ -43,13 +50,18 @@ export default function SettingsScreen() {
   async function handleSave() {
     const finalPochi = normalizePetName(pochiName, 'Pochi');
     const finalMochi = normalizePetName(mochiName, 'Mochi');
-    await Promise.all([
-      setItem(STORAGE_KEYS.PET_NAME, finalPochi),
-      setItem(STORAGE_KEYS.FEED_PET_NAME, finalMochi),
-    ]);
-    setPochiName(finalPochi);
-    setMochiName(finalMochi);
-    setSaved(true);
+    try {
+      await Promise.all([
+        setItem(STORAGE_KEYS.PET_NAME, finalPochi),
+        setItem(STORAGE_KEYS.FEED_PET_NAME, finalMochi),
+      ]);
+      setPochiName(finalPochi);
+      setMochiName(finalMochi);
+      setSaved(true);
+    } catch (e) {
+      console.error('Failed to save pet names:', e);
+      setSaved(false);
+    }
   }
 
   return (

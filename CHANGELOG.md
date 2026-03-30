@@ -64,7 +64,7 @@ All "focus" framing replaced with phone-down / Pochi-centric copy:
 | Pet caption | `[name] is ready to focus!` | `[name] is waiting for you` |
 | Active session title | `Stay focused!` | `You're with [name] ☁️` |
 | Active session hint | `[name] is cheering you on` | `Phone down. [name] needs you.` |
-| Give up | `Give up` | `Go back to my phone` |
+| Give up | `Give up` | `Give Up` |
 | Completion heading | `Session complete!` | `You showed up! 🎉` |
 | Completion body | `You focused for X mins. [name] is so proud!` | `X minutes with [name]. [name] loved every minute.` |
 | Save button | `Save session 🌟` | `Count this time 🌟` |

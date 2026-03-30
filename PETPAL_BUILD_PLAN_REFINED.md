@@ -45,6 +45,12 @@ Changes from the original plan, with rationale:
 | Framework | Bare React Native | **Expo with dev builds** | Familiar tooling; easier setup; still supports native modules |
 | Wake lock library | react-native-wake-lock | **Cut (redundant)** | react-native-background-actions already handles this |
 | background-actions install | Session 11 (cheat detection) | **Moved to Session 17 (music)** | Grace period only needs built-in AppState — no native module required. Library needs a dev build anyway (won't run in Expo Go), so defer until Session 17 when a dev build is already needed for react-native-track-player. Install both native modules in one build. |
+| App name | PetPal | **PetBloom** | Rebrand — `app.json`, `package.json`, Android package `com.petbloom.app`, color export `PetBloomColors`, all docs updated |
+| "Focus Session" framing | Task-oriented ("Focus Session", "Start Focus Session") | **Pochi-centric ("Time with [name]", "Step Away")** | Lowers the bar — session = choosing Pochi, not a productivity commitment. Tab renamed to "Step Away", stats renamed to "Away time" / "Visits" |
+| Onboarding | 4 steps (Welcome → Name Pochi → How It Works → Permissions) | **5 steps (Welcome → Meet Pochi → Meet Mochi → How It Works → Notifications)** | Second pet (Mochi) introduced in onboarding; both names user-assignable; Permissions step replaced with Notifications step |
+| Pet naming | Pochi only, named once, not changeable | **Both Pochi + Mochi named during onboarding; changeable in Settings** | Settings screen added; gear icon on Home header; `normalizePetName()` utility handles validation |
+| First-feed experience | Fish shown immediately | **Egg hatches into fish on first feed** | One-time delight moment — egg wiggles on each tap, cracks and reveals fish with spring animation |
+| Feed haptics | `notificationAsync(Warning)` per tap, `notificationAsync(Success)` on completion | **`notificationAsync(Error)` for all** | Error pattern produces the strongest vibration via this API |
 
 ---
 
@@ -755,6 +761,27 @@ Sized for **45-60 minute development sessions**. Each chunk is a self-contained 
 - [x] Food particle animation on each tap *(moved up, done in Session 14)*
 - [ ] More expressive pet reactions (mouth open, shaking)
 - [ ] Test cooldown edge cases (timezone changes, etc.)
+
+**Session 16–17: Onboarding Overhaul, Settings, UX Reframe & App Rename**
+- [x] **App renamed PetPal → PetBloom** — `app.json` (name/slug/scheme/package), `package.json`, `PetBloomColors` export, all docs, `#PetBloom` share hashtag
+- [x] **Onboarding rebuilt as 5-step flow** (Welcome → Meet Pochi → Meet Mochi → How It Works → Notifications):
+  - Welcome: two floating eggs (staggered animation), "Meet your new friends!"
+  - Meet Pochi: name input + evolution description ("Put your phone down and I'll grow"); rename hint above CTA
+  - Meet Mochi: name input + feeding description; same rename hint
+  - How It Works: updated rows referencing both pets by chosen names (`🐾 Spend time with [Pochi]` / `🐟 Feed [Mochi] daily`)
+  - Notifications: replaces Permissions step; requests `expo-notifications` permission; "Don't let us starve!" copy; skip works
+  - Both names saved via `normalizePetName()` to `PET_NAME` + `FEED_PET_NAME` on finish
+- [x] **`src/utils/petName.ts`** — `normalizePetName(input, fallback)`: trims, caps 12 chars, fallback if empty; 5 TDD tests
+- [x] **Settings screen** (`app/settings.tsx`) — rename Pochi + Mochi; gear icon in Home header; save button with ✓ confirmation
+- [x] **First-feed hatching animation** — egg shown until first feed; wiggles on each tap; cracks and reveals fish with spring-in on completion; `position: absolute` overlay prevents layout shift; one-time, never replays
+- [x] **UX reframe — Pochi-centric language across all screens:**
+  - Tab: `Focus` → `Step Away`; setup title: `Focus Session` → `Time with [name]`
+  - Active: `Stay focused!` → `You're with [name] ☁️`; hint: `Phone down. [name] needs you.`
+  - Give up: `Go back to my phone`; completion: `You showed up! 🎉`
+  - Save: `Count this time 🌟`; cheat: `Don't save — I looked at my phone`
+  - Home CTA: `🐾 Time with [name]`; stats: `Away time` / `Visits`
+- [x] **Bug fix:** Home feed button now reads `FEED_PET_NAME` (was incorrectly showing focus pet's name)
+- [x] **Haptics increased** — all feed taps + completion now use `notificationAsync(Error)` (strongest available pattern)
 
 **Phase 4 goal:** Feeding works with cooldown, haptics, and full mood/streak integration.
 
