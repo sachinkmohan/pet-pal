@@ -66,17 +66,16 @@ export function CircularCountdown({ totalSeconds, onComplete }: Props) {
   }, [totalSeconds]);
 
   useEffect(() => {
+    const endTime = Date.now() + totalSeconds * 1000;
     const id = setInterval(() => {
-      setRemaining((prev) => {
-        const next = prev - 1;
-        if (next <= 0) {
-          clearInterval(id);
-          // Defer so state update completes before calling parent
-          setTimeout(() => onCompleteRef.current(), 0);
-          return 0;
-        }
-        return next;
-      });
+      const left = Math.round((endTime - Date.now()) / 1000);
+      if (left <= 0) {
+        clearInterval(id);
+        setRemaining(0);
+        setTimeout(() => onCompleteRef.current(), 0);
+      } else {
+        setRemaining(left);
+      }
     }, 1000);
     return () => clearInterval(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps

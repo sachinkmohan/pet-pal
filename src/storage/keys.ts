@@ -27,6 +27,9 @@ export const STORAGE_KEYS = {
   // Stats
   PERSONAL_BEST: 'personalBest', // best ever daily focus minutes
   WEEKLY_FOCUS_DATA: 'weeklyFocusData', // JSON array of last 7 days (minutes)
+
+  // Focus screen
+  RECENT_DURATIONS: 'recentDurations', // number[] of last 3 unique saved session durations (minutes)
 } as const;
 
 export type StorageKey = (typeof STORAGE_KEYS)[keyof typeof STORAGE_KEYS];

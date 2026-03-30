@@ -1,5 +1,6 @@
 import { useFocusEffect } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { useNavigation } from 'expo-router';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -11,96 +12,141 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { PetPalColors } from '@/src/constants/Colors';
 import { EVOLUTION_CONFIG, getEvolutionStage } from '@/src/constants/PetStates';
 import { calculateMood } from '@/src/services/MoodService';
+import { showSessionNotification, cancelSessionNotification } from '@/src/services/NotificationService';
+import { createFocusStateMachine, FocusStateMachine, SessionState } from '@/src/services/FocusService';
 import { getItem, setItem } from '@/src/storage/AppStorage';
 import { STORAGE_KEYS } from '@/src/storage/keys';
+import { addRecentDuration } from '@/src/storage/recentDurations';
 import { resetDailyDataIfNeeded } from '@/src/storage/seedData';
 
-const PRESETS = [5, 15, 30, 60] as const;
 
 export default function FocusScreen() {
   const isDark = useColorScheme() === 'dark';
+  const navigation = useNavigation();
 
   // Setup state
   const [duration, setDuration] = useState(25);
   const [musicEnabled, setMusicEnabled] = useState(false);
   const [petEmoji, setPetEmoji] = useState('🥚');
   const [petName, setPetName] = useState('Pochi');
+  const [recentDurations, setRecentDurations] = useState<number[]>([]);
 
-  // Session state
-  const [sessionActive, setSessionActive] = useState(false);
+  // Session state (driven by FocusStateMachine)
+  const [sessionState, setSessionState] = useState<SessionState>('idle');
   const [sessionComplete, setSessionComplete] = useState(false);
   const [completedDuration, setCompletedDuration] = useState(0);
 
+  // Machine ref — single instance per screen mount
+  const machineRef = useRef<FocusStateMachine | null>(null);
+  const sessionDurationRef = useRef(duration);
+  const sessionActive = sessionState === 'active';
+
   const loadData = useCallback(async () => {
-    const [name, totalSessions] = await Promise.all([
+    const [name, totalSessions, recents] = await Promise.all([
       getItem<string>(STORAGE_KEYS.PET_NAME),
       getItem<number>(STORAGE_KEYS.TOTAL_SESSIONS_EVER),
+      getItem<number[]>(STORAGE_KEYS.RECENT_DURATIONS),
     ]);
     const stage = getEvolutionStage(totalSessions ?? 0);
     setPetEmoji(EVOLUTION_CONFIG[stage].emoji);
     setPetName(name ?? 'Pochi');
+    setRecentDurations(recents ?? []);
   }, []);
 
   useFocusEffect(useCallback(() => {
     loadData();
-    // Cancel any active session on blur — CircularCountdown must not continue offscreen
-    // and cannot call handleSessionComplete after the screen loses focus.
-    // sessionComplete is NOT reset here — the modal must be dismissed explicitly.
-    return () => setSessionActive(false);
+    return () => {
+      machineRef.current?.giveUp();
+      cancelSessionNotification();
+    };
   }, [loadData]));
 
-  function handleStart() {
-    setSessionActive(true);
+  // Hide tab bar during active session
+  useEffect(() => {
+    navigation.setOptions({
+      tabBarStyle: sessionActive ? { display: 'none' } : undefined,
+    });
+  }, [sessionActive, navigation]);
+
+  // Create machine once
+  useEffect(() => {
+    const machine = createFocusStateMachine((state) => {
+      setSessionState(state);
+      if (state === 'completed') {
+        // Don't save yet — wait for user to confirm or deny
+        cancelSessionNotification();
+        setCompletedDuration(sessionDurationRef.current);
+        setSessionComplete(true);
+      }
+    });
+    machineRef.current = machine;
+
+    return () => {
+      machine.dispose();
+      machineRef.current = null;
+    };
+  }, []);
+
+  function handleStart(overrideSecs?: number) {
+    if (sessionState !== 'idle' || !machineRef.current) return;
+    const totalSecs = overrideSecs ?? duration * 60;
+    sessionDurationRef.current = totalSecs / 60;
+    if (overrideSecs !== undefined) setDuration(overrideSecs / 60);
+    machineRef.current.startSession();
+    showSessionNotification(petName, totalSecs);
   }
 
   function handleGiveUp() {
-    setSessionActive(false);
+    machineRef.current?.giveUp();
+    cancelSessionNotification();
   }
 
-  async function handleSessionComplete() {
-    // 1. Guard against midnight crossing during a long session
+  async function saveSessionData(sessionDuration: number) {
     await resetDailyDataIfNeeded();
 
-    // 2. Read current counters
-    const [totalSessions, sessionsToday, focusTimeToday, lastFedTime, statsEnabled] =
+    const [totalSessions, sessionsToday, focusTimeToday, lastFedTime, statsEnabled, recents] =
       await Promise.all([
         getItem<number>(STORAGE_KEYS.TOTAL_SESSIONS_EVER),
         getItem<number>(STORAGE_KEYS.SESSIONS_TODAY),
         getItem<number>(STORAGE_KEYS.FOCUS_TIME_TODAY),
         getItem<number>(STORAGE_KEYS.LAST_FED_TIME),
         getItem<boolean>(STORAGE_KEYS.USAGE_STATS_ENABLED),
+        getItem<number[]>(STORAGE_KEYS.RECENT_DURATIONS),
       ]);
 
     const newTotal = (totalSessions ?? 0) + 1;
     const newSessionsToday = (sessionsToday ?? 0) + 1;
-    const newFocusTime = (focusTimeToday ?? 0) + duration;
+    const newFocusTime = (focusTimeToday ?? 0) + sessionDuration;
+    const newRecents = addRecentDuration(recents ?? [], sessionDuration);
 
-    // 3. Persist incremented values
     await Promise.all([
       setItem(STORAGE_KEYS.TOTAL_SESSIONS_EVER, newTotal),
       setItem(STORAGE_KEYS.SESSIONS_TODAY, newSessionsToday),
       setItem(STORAGE_KEYS.FOCUS_TIME_TODAY, newFocusTime),
+      setItem(STORAGE_KEYS.RECENT_DURATIONS, newRecents),
     ]);
+    setRecentDurations(newRecents);
 
-    // 4. Recalculate mood — called after every session per domain rules
-    //    (screenTimeHours wired once ScreenTimeService is available in Phase 6)
     calculateMood({
       sessionsCompleted: newSessionsToday,
       lastFedTime: lastFedTime ?? null,
       screenTimeEnabled: statsEnabled ?? false,
     });
 
-    // 5. Refresh pet emoji in case this session crossed an evolution threshold
     const stage = getEvolutionStage(newTotal);
     setPetEmoji(EVOLUTION_CONFIG[stage].emoji);
-
-    setCompletedDuration(duration);
-    setSessionActive(false);
-    setSessionComplete(true);
   }
 
-  function handleDone() {
+  async function handleSaveSession() {
+    await saveSessionData(completedDuration);
     setSessionComplete(false);
+    machineRef.current?.giveUp(); // completed → idle
+  }
+
+  function handleDontSave() {
+    // User admitted they cheated — discard without recording
+    setSessionComplete(false);
+    machineRef.current?.giveUp(); // completed → idle
   }
 
   // Theme-aware colors
@@ -119,7 +165,7 @@ export default function FocusScreen() {
 
             <CircularCountdown
               totalSeconds={duration * 60}
-              onComplete={handleSessionComplete}
+              onComplete={() => machineRef.current?.timerComplete()}
             />
 
             <ThemedText style={[styles.sessionHint, { color: textMuted }]}>
@@ -151,8 +197,13 @@ export default function FocusScreen() {
               <CircularSlider value={duration} onChange={setDuration} />
             </View>
 
+            {recentDurations.length > 0 && (
+              <ThemedText style={[styles.recentsLabel, { color: textMuted }]}>
+                recent
+              </ThemedText>
+            )}
             <View style={styles.presets}>
-              {PRESETS.map((min) => {
+              {recentDurations.map((min) => {
                 const isActive = duration === min;
                 return (
                   <Pressable
@@ -164,7 +215,7 @@ export default function FocusScreen() {
                         opacity: pressed ? 0.8 : 1,
                       },
                     ]}
-                    onPress={() => setDuration(min)}
+                    onPress={() => handleStart(min * 60)}
                   >
                     <ThemedText
                       style={[
@@ -217,23 +268,34 @@ export default function FocusScreen() {
                 styles.startButton,
                 { backgroundColor: PetPalColors.primary, opacity: pressed ? 0.85 : 1 },
               ]}
-              onPress={handleStart}
+              onPress={() => handleStart()}
             >
               <ThemedText style={styles.startButtonText}>
                 Start — I won't touch my phone!
               </ThemedText>
             </Pressable>
+
+            {__DEV__ && (
+              <Pressable
+                style={({ pressed }) => [styles.testButton, { opacity: pressed ? 0.7 : 1 }]}
+                onPress={() => handleStart(10)}
+              >
+                <ThemedText style={[styles.testButtonText, { color: textMuted }]}>
+                  ⚡ 10s test
+                </ThemedText>
+              </Pressable>
+            )}
           </ScrollView>
         )}
       </ThemedView>
 
-      {/* ── Session complete overlay ── */}
+      {/* ── Session complete modal ── */}
       <Modal
         visible={sessionComplete}
         transparent
         animationType="fade"
         statusBarTranslucent
-        onRequestClose={handleDone}
+        onRequestClose={handleDontSave}
       >
         <View style={styles.backdrop}>
           <View style={[styles.celebCard, { backgroundColor: cardBg }]}>
@@ -246,12 +308,24 @@ export default function FocusScreen() {
 
             <Pressable
               style={({ pressed }) => [
-                styles.doneButton,
+                styles.saveButton,
                 { backgroundColor: PetPalColors.primary, opacity: pressed ? 0.85 : 1 },
               ]}
-              onPress={handleDone}
+              onPress={handleSaveSession}
             >
-              <ThemedText style={styles.doneButtonText}>Awesome! 🌟</ThemedText>
+              <ThemedText style={styles.buttonText}>Save session 🌟</ThemedText>
+            </Pressable>
+
+            <Pressable
+              style={({ pressed }) => [
+                styles.cheatButton,
+                { opacity: pressed ? 0.7 : 1 },
+              ]}
+              onPress={handleDontSave}
+            >
+              <ThemedText style={[styles.cheatText, { color: textMuted }]}>
+                Don't save — I cheated
+              </ThemedText>
             </Pressable>
           </View>
         </View>
@@ -295,6 +369,13 @@ const styles = StyleSheet.create({
   chipText: {
     fontSize: 14,
     fontWeight: '600',
+  },
+  recentsLabel: {
+    fontSize: 11,
+    fontWeight: '500',
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+    alignSelf: 'flex-start',
   },
   petPreview: {
     alignItems: 'center',
@@ -353,6 +434,12 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
   },
+  testButton: {
+    paddingVertical: 8,
+  },
+  testButtonText: {
+    fontSize: 12,
+  },
   // Active session view
   sessionContainer: {
     flex: 1,
@@ -404,16 +491,24 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 22,
   },
-  doneButton: {
+  saveButton: {
     width: '100%',
     borderRadius: 16,
     paddingVertical: 16,
     alignItems: 'center',
     marginTop: 8,
   },
-  doneButtonText: {
+  buttonText: {
     color: PetPalColors.white,
     fontSize: 16,
     fontWeight: '700',
+  },
+  cheatButton: {
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+  },
+  cheatText: {
+    fontSize: 14,
+    textDecorationLine: 'underline',
   },
 });
