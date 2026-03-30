@@ -1,15 +1,21 @@
-import { useFocusEffect, useRouter } from 'expo-router';
-import { useCallback, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useFocusEffect, useRouter } from "expo-router";
+import { useCallback, useState } from "react";
+import {
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
-import { EvolutionCelebration } from '@/components/evolution-celebration';
-import { IconSymbol } from '@/components/ui/icon-symbol';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { XpProgressBar } from '@/components/xp-progress-bar';
-import { useColorScheme } from '@/hooks/use-color-scheme';
-import { PetPalColors } from '@/src/constants/Colors';
+import { EvolutionCelebration } from "@/components/evolution-celebration";
+import { ThemedText } from "@/components/themed-text";
+import { ThemedView } from "@/components/themed-view";
+import { IconSymbol } from "@/components/ui/icon-symbol";
+import { XpProgressBar } from "@/components/xp-progress-bar";
+import { useColorScheme } from "@/hooks/use-color-scheme";
+import { PetPalColors } from "@/src/constants/Colors";
 import {
   EVOLUTION_CONFIG,
   EVOLUTION_ORDER,
@@ -17,23 +23,23 @@ import {
   MOOD_CONFIG,
   MoodState,
   getEvolutionStage,
-} from '@/src/constants/PetStates';
-import { FEED_COOLDOWN_MS, calculateMood } from '@/src/services/MoodService';
-import { getItem, setItem } from '@/src/storage/AppStorage';
-import { STORAGE_KEYS } from '@/src/storage/keys';
+} from "@/src/constants/PetStates";
+import { FEED_COOLDOWN_MS, calculateMood } from "@/src/services/MoodService";
+import { getItem, setItem } from "@/src/storage/AppStorage";
+import { STORAGE_KEYS } from "@/src/storage/keys";
 
 function getGreeting(): string {
   const hour = new Date().getHours();
-  if (hour < 12) return 'Good morning';
-  if (hour < 18) return 'Good afternoon';
-  return 'Good evening';
+  if (hour < 12) return "Good morning";
+  if (hour < 18) return "Good afternoon";
+  return "Good evening";
 }
 
 function getFormattedDate(): string {
-  return new Date().toLocaleDateString('en-US', {
-    weekday: 'long',
-    month: 'long',
-    day: 'numeric',
+  return new Date().toLocaleDateString("en-US", {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
   });
 }
 
@@ -45,9 +51,9 @@ function pickDailyMessage(mood: MoodState): string {
 export default function HomeScreen() {
   const router = useRouter();
   const colorScheme = useColorScheme();
-  const isDark = colorScheme === 'dark';
+  const isDark = colorScheme === "dark";
 
-  const [petName, setPetName] = useState('Pochi');
+  const [petName, setPetName] = useState("Pochi");
   const [currentStreak, setCurrentStreak] = useState(0);
   const [sessionsToday, setSessionsToday] = useState(0);
   const [focusTimeToday, setFocusTimeToday] = useState(0);
@@ -55,22 +61,32 @@ export default function HomeScreen() {
   const [totalSessionsEver, setTotalSessionsEver] = useState(0);
   const [lastFedTime, setLastFedTime] = useState<number | null>(null);
   const [usageStatsEnabled, setUsageStatsEnabled] = useState(false);
-  const [dailyMessage, setDailyMessage] = useState('');
-  const [celebrationStage, setCelebrationStage] = useState<EvolutionStage | null>(null);
+  const [dailyMessage, setDailyMessage] = useState("");
+  const [celebrationStage, setCelebrationStage] =
+    useState<EvolutionStage | null>(null);
 
   const loadData = useCallback(async () => {
-    const [name, streak, sessToday, focusTime, pb, totalSessions, fedTime, statsEnabled, storedStage] =
-      await Promise.all([
-        getItem<string>(STORAGE_KEYS.PET_NAME),
-        getItem<number>(STORAGE_KEYS.CURRENT_STREAK),
-        getItem<number>(STORAGE_KEYS.SESSIONS_TODAY),
-        getItem<number>(STORAGE_KEYS.FOCUS_TIME_TODAY),
-        getItem<number>(STORAGE_KEYS.PERSONAL_BEST),
-        getItem<number>(STORAGE_KEYS.TOTAL_SESSIONS_EVER),
-        getItem<number>(STORAGE_KEYS.LAST_FED_TIME),
-        getItem<boolean>(STORAGE_KEYS.USAGE_STATS_ENABLED),
-        getItem<string>(STORAGE_KEYS.EVOLUTION_STAGE),
-      ]);
+    const [
+      name,
+      streak,
+      sessToday,
+      focusTime,
+      pb,
+      totalSessions,
+      fedTime,
+      statsEnabled,
+      storedStage,
+    ] = await Promise.all([
+      getItem<string>(STORAGE_KEYS.PET_NAME),
+      getItem<number>(STORAGE_KEYS.CURRENT_STREAK),
+      getItem<number>(STORAGE_KEYS.SESSIONS_TODAY),
+      getItem<number>(STORAGE_KEYS.FOCUS_TIME_TODAY),
+      getItem<number>(STORAGE_KEYS.PERSONAL_BEST),
+      getItem<number>(STORAGE_KEYS.TOTAL_SESSIONS_EVER),
+      getItem<number>(STORAGE_KEYS.LAST_FED_TIME),
+      getItem<boolean>(STORAGE_KEYS.USAGE_STATS_ENABLED),
+      getItem<string>(STORAGE_KEYS.EVOLUTION_STAGE),
+    ]);
 
     const total = totalSessions ?? 0;
     const sessions = sessToday ?? 0;
@@ -84,17 +100,20 @@ export default function HomeScreen() {
     // Validate storedStage is a known EvolutionStage before comparing —
     // a corrupt/unknown value must not cause an infinite retrigger loop.
     const computedStage = getEvolutionStage(total);
-    const isKnownStage = storedStage !== null &&
+    const isKnownStage =
+      storedStage !== null &&
       (EVOLUTION_ORDER as string[]).includes(storedStage);
     if (isKnownStage) {
       const storedIndex = (EVOLUTION_ORDER as string[]).indexOf(storedStage);
-      const computedIndex = (EVOLUTION_ORDER as string[]).indexOf(computedStage);
+      const computedIndex = (EVOLUTION_ORDER as string[]).indexOf(
+        computedStage,
+      );
       if (computedIndex > storedIndex) {
         setCelebrationStage(computedStage);
       }
     }
 
-    setPetName(name ?? 'Pochi');
+    setPetName(name ?? "Pochi");
     setCurrentStreak(streak ?? 0);
     setSessionsToday(sessions);
     setFocusTimeToday(focusTime ?? 0);
@@ -105,7 +124,11 @@ export default function HomeScreen() {
     setDailyMessage(pickDailyMessage(mood));
   }, []);
 
-  useFocusEffect(useCallback(() => { loadData(); }, [loadData]));
+  useFocusEffect(
+    useCallback(() => {
+      loadData();
+    }, [loadData]),
+  );
 
   async function handleEvolutionDismiss() {
     if (celebrationStage) {
@@ -121,7 +144,8 @@ export default function HomeScreen() {
   // Derived values
   const evolutionStage = getEvolutionStage(totalSessionsEver);
   const petEmoji = EVOLUTION_CONFIG[evolutionStage].emoji;
-  const feedAvailable = lastFedTime === null || Date.now() - lastFedTime >= FEED_COOLDOWN_MS;
+  const feedAvailable =
+    lastFedTime === null || Date.now() - lastFedTime >= FEED_COOLDOWN_MS;
   const mood = calculateMood({
     sessionsCompleted: sessionsToday,
     lastFedTime,
@@ -132,7 +156,9 @@ export default function HomeScreen() {
   // Theme-aware colors
   const surface = isDark ? PetPalColors.surfaceDark : PetPalColors.surface;
   const border = isDark ? PetPalColors.borderDark : PetPalColors.border;
-  const textMuted = isDark ? PetPalColors.textMutedDark : PetPalColors.textMuted;
+  const textMuted = isDark
+    ? PetPalColors.textMutedDark
+    : PetPalColors.textMuted;
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -153,18 +179,26 @@ export default function HomeScreen() {
                 </ThemedText>
               </View>
               <TouchableOpacity
-                onPress={() => router.push('/settings')}
+                onPress={() => router.push("/settings")}
                 hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
                 accessibilityLabel="Settings"
-                accessibilityRole="button">
+                accessibilityRole="button"
+              >
                 <IconSymbol name="gearshape.fill" size={24} color={textMuted} />
               </TouchableOpacity>
             </View>
           </View>
 
           {/* Streak Badge */}
-          <View style={[styles.streakBadge, { backgroundColor: PetPalColors.primaryLight }]}>
-            <ThemedText style={[styles.streakText, { color: PetPalColors.streak }]}>
+          <View
+            style={[
+              styles.streakBadge,
+              { backgroundColor: PetPalColors.primaryLight },
+            ]}
+          >
+            <ThemedText
+              style={[styles.streakText, { color: PetPalColors.streak }]}
+            >
               🔥 {currentStreak} day streak
             </ThemedText>
           </View>
@@ -173,10 +207,12 @@ export default function HomeScreen() {
           <View style={styles.petArea}>
             <ThemedText style={styles.petEmoji}>{petEmoji}</ThemedText>
             <ThemedText style={styles.petName}>{petName}</ThemedText>
-            <ThemedText style={[styles.moodLabel, { color: PetPalColors[mood] }]}>
+            <ThemedText
+              style={[styles.moodLabel, { color: PetPalColors[mood] }]}
+            >
               {moodConfig.emoji} {moodConfig.label}
             </ThemedText>
-            {dailyMessage !== '' && (
+            {dailyMessage !== "" && (
               <ThemedText style={[styles.dailyMessage, { color: textMuted }]}>
                 {`\u201C${dailyMessage}\u201D`}
               </ThemedText>
@@ -194,22 +230,32 @@ export default function HomeScreen() {
             <Pressable
               style={({ pressed }) => [
                 styles.button,
-                { backgroundColor: PetPalColors.primary, opacity: pressed ? 0.85 : 1 },
+                {
+                  backgroundColor: PetPalColors.primary,
+                  opacity: pressed ? 0.85 : 1,
+                },
               ]}
-              onPress={() => router.push('/(tabs)/focus')}
+              onPress={() => router.push("/(tabs)/focus")}
             >
-              <ThemedText style={styles.buttonText}>🎯 Start Focus Session</ThemedText>
+              <ThemedText style={styles.buttonText}>
+                🐾 Time with {petName}
+              </ThemedText>
             </Pressable>
 
             <Pressable
               style={({ pressed }) => [
                 styles.button,
-                { backgroundColor: PetPalColors.accent, opacity: pressed ? 0.85 : 1 },
+                {
+                  backgroundColor: PetPalColors.accent,
+                  opacity: pressed ? 0.85 : 1,
+                },
               ]}
-              onPress={() => router.push('/feed')}
+              onPress={() => router.push("/feed")}
             >
               <View style={styles.feedButtonInner}>
-                <ThemedText style={styles.buttonText}>🍎 Feed {petName}</ThemedText>
+                <ThemedText style={styles.buttonText}>
+                  🍎 Feed {petName}
+                </ThemedText>
                 {feedAvailable && <View style={styles.feedDot} />}
               </View>
             </Pressable>
@@ -218,23 +264,27 @@ export default function HomeScreen() {
           {/* Today's Stats Row */}
           <View style={[styles.statsRow, { backgroundColor: surface }]}>
             <View style={styles.stat}>
-              <ThemedText style={[styles.statValue, { color: PetPalColors.focusBar }]}>
+              <ThemedText
+                style={[styles.statValue, { color: PetPalColors.focusBar }]}
+              >
                 {focusTimeToday}m
               </ThemedText>
               <ThemedText style={[styles.statLabel, { color: textMuted }]}>
-                Focus today
+                Screen Away Time
               </ThemedText>
             </View>
             <View style={[styles.statDivider, { backgroundColor: border }]} />
             <View style={styles.stat}>
               <ThemedText style={styles.statValue}>{sessionsToday}</ThemedText>
               <ThemedText style={[styles.statLabel, { color: textMuted }]}>
-                Sessions
+                Visits
               </ThemedText>
             </View>
             <View style={[styles.statDivider, { backgroundColor: border }]} />
             <View style={styles.stat}>
-              <ThemedText style={[styles.statValue, { color: PetPalColors.thriving }]}>
+              <ThemedText
+                style={[styles.statValue, { color: PetPalColors.thriving }]}
+              >
                 {personalBest}m
               </ThemedText>
               <ThemedText style={[styles.statLabel, { color: textMuted }]}>
@@ -276,9 +326,9 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   headerRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
   },
   headerText: {
     flex: 1,
@@ -286,23 +336,23 @@ const styles = StyleSheet.create({
   },
   greeting: {
     fontSize: 22,
-    fontWeight: '700',
+    fontWeight: "700",
   },
   date: {
     fontSize: 14,
   },
   streakBadge: {
-    alignSelf: 'flex-start',
+    alignSelf: "flex-start",
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
   },
   streakText: {
     fontSize: 15,
-    fontWeight: '700',
+    fontWeight: "700",
   },
   petArea: {
-    alignItems: 'center',
+    alignItems: "center",
     gap: 8,
     paddingVertical: 16,
   },
@@ -312,16 +362,16 @@ const styles = StyleSheet.create({
   },
   petName: {
     fontSize: 24,
-    fontWeight: '700',
+    fontWeight: "700",
   },
   moodLabel: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   dailyMessage: {
     fontSize: 14,
-    fontStyle: 'italic',
-    textAlign: 'center',
+    fontStyle: "italic",
+    textAlign: "center",
     paddingHorizontal: 16,
     marginTop: 4,
   },
@@ -331,16 +381,16 @@ const styles = StyleSheet.create({
   button: {
     borderRadius: 16,
     paddingVertical: 16,
-    alignItems: 'center',
+    alignItems: "center",
   },
   buttonText: {
     color: PetPalColors.white,
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   feedButtonInner: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 8,
   },
   feedDot: {
@@ -350,15 +400,15 @@ const styles = StyleSheet.create({
     backgroundColor: PetPalColors.white,
   },
   statsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-around",
+    alignItems: "center",
     paddingVertical: 20,
     paddingHorizontal: 16,
     borderRadius: 16,
   },
   stat: {
-    alignItems: 'center',
+    alignItems: "center",
     gap: 4,
     flex: 1,
   },
@@ -368,7 +418,7 @@ const styles = StyleSheet.create({
   },
   statValue: {
     fontSize: 20,
-    fontWeight: '700',
+    fontWeight: "700",
   },
   statLabel: {
     fontSize: 12,

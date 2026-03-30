@@ -233,9 +233,9 @@ function MeetPochiStep({
         <WigglingEgg trigger={pochiName} />
         <Text style={styles.heading}>Your focus buddy</Text>
         <Text style={styles.subheading}>
-          This little egg hatches when you focus.{'\n'}
-          Complete sessions to evolve through{'\n'}
-          6 stages — from egg to legendary.
+          Put your phone down and I'll grow.{'\n'}
+          The more time you spend with me,{'\n'}
+          the stronger I become — 6 stages.
         </Text>
         <TextInput
           style={styles.nameInput}
@@ -311,8 +311,8 @@ function MeetMochiStep({
 
 const HOW_ITEMS = (pochiName: string, mochiName: string) => [
   { emoji: '🐟', title: `Feed ${mochiName} daily`, desc: 'Tap 3 times once a day to keep them happy' },
-  { emoji: '🎯', title: `Focus with ${pochiName}`, desc: 'Complete focus sessions to level up' },
-  { emoji: '✨', title: 'Watch both evolve', desc: `${pochiName} grows stronger, ${mochiName} grows bigger` },
+  { emoji: '🐾', title: `Spend time with ${pochiName}`, desc: "Put your phone down and they'll grow" },
+  { emoji: '✨', title: 'Watch both grow', desc: `${pochiName} gets stronger, ${mochiName} gets bigger` },
 ] as const;
 
 function HowItWorksStep({ pochiName, mochiName, onNext }: { pochiName: string; mochiName: string; onNext: () => void }) {
