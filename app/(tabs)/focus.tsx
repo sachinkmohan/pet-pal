@@ -8,7 +8,7 @@ import { CircularSlider } from "@/components/circular-slider";
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
 import { useColorScheme } from "@/hooks/use-color-scheme";
-import { PetPalColors } from "@/src/constants/Colors";
+import { PetBloomColors } from "@/src/constants/Colors";
 import { EVOLUTION_CONFIG, getEvolutionStage } from "@/src/constants/PetStates";
 import {
   createFocusStateMachine,
@@ -163,12 +163,12 @@ export default function FocusScreen() {
   }
 
   // Theme-aware colors
-  const chipBg = isDark ? PetPalColors.surfaceDark : PetPalColors.primaryLight;
-  const toggleBg = isDark ? PetPalColors.surfaceDark : PetPalColors.surface;
+  const chipBg = isDark ? PetBloomColors.surfaceDark : PetBloomColors.primaryLight;
+  const toggleBg = isDark ? PetBloomColors.surfaceDark : PetBloomColors.surface;
   const textMuted = isDark
-    ? PetPalColors.textMutedDark
-    : PetPalColors.textMuted;
-  const cardBg = isDark ? PetPalColors.backgroundDark : PetPalColors.background;
+    ? PetBloomColors.textMutedDark
+    : PetBloomColors.textMuted;
+  const cardBg = isDark ? PetBloomColors.backgroundDark : PetBloomColors.background;
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -229,7 +229,7 @@ export default function FocusScreen() {
                       styles.chip,
                       {
                         backgroundColor: isActive
-                          ? PetPalColors.primary
+                          ? PetBloomColors.primary
                           : chipBg,
                         opacity: pressed ? 0.8 : 1,
                       },
@@ -241,8 +241,8 @@ export default function FocusScreen() {
                         styles.chipText,
                         {
                           color: isActive
-                            ? PetPalColors.white
-                            : PetPalColors.primary,
+                            ? PetBloomColors.white
+                            : PetBloomColors.primary,
                         },
                       ]}
                     >
@@ -276,8 +276,8 @@ export default function FocusScreen() {
                   styles.togglePill,
                   {
                     backgroundColor: musicEnabled
-                      ? PetPalColors.primary
-                      : PetPalColors.border,
+                      ? PetBloomColors.primary
+                      : PetBloomColors.border,
                   },
                 ]}
               >
@@ -294,7 +294,7 @@ export default function FocusScreen() {
               style={({ pressed }) => [
                 styles.startButton,
                 {
-                  backgroundColor: PetPalColors.primary,
+                  backgroundColor: PetBloomColors.primary,
                   opacity: pressed ? 0.85 : 1,
                 },
               ]}
@@ -348,7 +348,7 @@ export default function FocusScreen() {
               style={({ pressed }) => [
                 styles.saveButton,
                 {
-                  backgroundColor: PetPalColors.primary,
+                  backgroundColor: PetBloomColors.primary,
                   opacity: pressed ? 0.85 : 1,
                 },
               ]}
@@ -464,7 +464,7 @@ const styles = StyleSheet.create({
     width: 22,
     height: 22,
     borderRadius: 11,
-    backgroundColor: PetPalColors.white,
+    backgroundColor: PetBloomColors.white,
   },
   startButton: {
     width: "100%",
@@ -473,7 +473,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   startButtonText: {
-    color: PetPalColors.white,
+    color: PetBloomColors.white,
     fontSize: 16,
     fontWeight: "700",
   },
@@ -508,7 +508,7 @@ const styles = StyleSheet.create({
   // Completion modal
   backdrop: {
     flex: 1,
-    backgroundColor: PetPalColors.scrim,
+    backgroundColor: PetBloomColors.scrim,
     justifyContent: "center",
     alignItems: "center",
     paddingHorizontal: 24,
@@ -542,7 +542,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   buttonText: {
-    color: PetPalColors.white,
+    color: PetBloomColors.white,
     fontSize: 16,
     fontWeight: "700",
   },

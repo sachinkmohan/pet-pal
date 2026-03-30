@@ -8,7 +8,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { XpProgressBar } from '@/components/xp-progress-bar';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { PetPalColors } from '@/src/constants/Colors';
+import { PetBloomColors } from '@/src/constants/Colors';
 import {
   EVOLUTION_CONFIG,
   EVOLUTION_ORDER,
@@ -42,8 +42,8 @@ export default function JourneyScreen() {
   const nextStage = getNextEvolutionStage(currentStage);
   const nextConfig = nextStage ? EVOLUTION_CONFIG[nextStage] : null;
 
-  const surface = isDark ? PetPalColors.surfaceDark : PetPalColors.surface;
-  const textMuted = isDark ? PetPalColors.textMutedDark : PetPalColors.textMuted;
+  const surface = isDark ? PetBloomColors.surfaceDark : PetBloomColors.surface;
+  const textMuted = isDark ? PetBloomColors.textMutedDark : PetBloomColors.textMuted;
 
   function stageStatus(stage: EvolutionStage): EvolutionStatus {
     const required = EVOLUTION_CONFIG[stage].sessionsRequired;
@@ -83,14 +83,14 @@ export default function JourneyScreen() {
 
           {/* Next evolution preview */}
           {nextConfig && (
-            <View style={[styles.nextPreview, { backgroundColor: PetPalColors.primaryLight }]}>
+            <View style={[styles.nextPreview, { backgroundColor: PetBloomColors.primaryLight }]}>
               <ThemedText style={styles.nextLabel}>Next evolution</ThemedText>
               <View style={styles.nextRow}>
                 <ThemedText style={styles.nextEmoji}>{currentConfig.emoji}</ThemedText>
-                <ThemedText style={[styles.nextArrow, { color: PetPalColors.primary }]}>→</ThemedText>
+                <ThemedText style={[styles.nextArrow, { color: PetBloomColors.primary }]}>→</ThemedText>
                 <ThemedText style={styles.nextEmoji}>{nextConfig.emoji}</ThemedText>
                 <View style={styles.nextInfo}>
-                  <ThemedText style={[styles.nextName, { color: PetPalColors.primary }]}>
+                  <ThemedText style={[styles.nextName, { color: PetBloomColors.primary }]}>
                     {nextConfig.name}
                   </ThemedText>
                   <ThemedText style={[styles.nextReward, { color: textMuted }]}>

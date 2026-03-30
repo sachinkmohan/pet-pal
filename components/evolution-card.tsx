@@ -2,7 +2,7 @@ import { StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { PetPalColors } from '@/src/constants/Colors';
+import { PetBloomColors } from '@/src/constants/Colors';
 import { EVOLUTION_CONFIG, EvolutionStage } from '@/src/constants/PetStates';
 
 export type EvolutionStatus = 'completed' | 'current' | 'locked';
@@ -22,12 +22,12 @@ export function EvolutionCard({ stage, status, showConnector = false }: Props) {
   const isCurrent = status === 'current';
 
   const iconBg = isLocked
-    ? (isDark ? PetPalColors.surfaceDark : PetPalColors.surface)
+    ? (isDark ? PetBloomColors.surfaceDark : PetBloomColors.surface)
     : isCurrent
-    ? PetPalColors.primaryLight
-    : PetPalColors.accentLight;
+    ? PetBloomColors.primaryLight
+    : PetBloomColors.accentLight;
 
-  const connectorColor = isDark ? PetPalColors.borderDark : PetPalColors.border;
+  const connectorColor = isDark ? PetBloomColors.borderDark : PetBloomColors.border;
 
   return (
     <View style={styles.wrapper}>
@@ -40,7 +40,7 @@ export function EvolutionCard({ stage, status, showConnector = false }: Props) {
         style={[
           styles.row,
           isCurrent && {
-            backgroundColor: isDark ? PetPalColors.surfaceDark : PetPalColors.primaryLight,
+            backgroundColor: isDark ? PetBloomColors.surfaceDark : PetBloomColors.primaryLight,
             borderRadius: 16,
             paddingHorizontal: 12,
           },
@@ -51,7 +51,7 @@ export function EvolutionCard({ stage, status, showConnector = false }: Props) {
           style={[
             styles.iconCircle,
             { backgroundColor: iconBg },
-            isCurrent && { borderWidth: 2, borderColor: PetPalColors.primary },
+            isCurrent && { borderWidth: 2, borderColor: PetBloomColors.primary },
           ]}
         >
           <ThemedText style={[styles.emoji, isLocked && styles.dimmed]}>
@@ -138,13 +138,13 @@ const styles = StyleSheet.create({
     opacity: 0.35,
   },
   currentPill: {
-    backgroundColor: PetPalColors.primary,
+    backgroundColor: PetBloomColors.primary,
     borderRadius: 8,
     paddingHorizontal: 7,
     paddingVertical: 2,
   },
   currentPillText: {
-    color: PetPalColors.white,
+    color: PetBloomColors.white,
     fontSize: 11,
     fontWeight: '600',
   },
@@ -156,13 +156,13 @@ const styles = StyleSheet.create({
     width: 26,
     height: 26,
     borderRadius: 13,
-    backgroundColor: PetPalColors.accent,
+    backgroundColor: PetBloomColors.accent,
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
   },
   checkText: {
-    color: PetPalColors.white,
+    color: PetBloomColors.white,
     fontSize: 13,
     fontWeight: '700',
   },

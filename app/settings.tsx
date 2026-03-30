@@ -14,7 +14,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { PetPalColors } from '@/src/constants/Colors';
+import { PetBloomColors } from '@/src/constants/Colors';
 import { normalizePetName } from '@/src/utils/petName';
 import { getItem, setItem } from '@/src/storage/AppStorage';
 import { STORAGE_KEYS } from '@/src/storage/keys';
@@ -25,9 +25,9 @@ export default function SettingsScreen() {
   const [mochiName, setMochiName] = useState('');
   const [saved, setSaved] = useState(false);
 
-  const surface = isDark ? PetPalColors.surfaceDark : PetPalColors.surface;
-  const textMuted = isDark ? PetPalColors.textMutedDark : PetPalColors.textMuted;
-  const borderColor = isDark ? PetPalColors.borderDark : PetPalColors.border;
+  const surface = isDark ? PetBloomColors.surfaceDark : PetBloomColors.surface;
+  const textMuted = isDark ? PetBloomColors.textMutedDark : PetBloomColors.textMuted;
+  const borderColor = isDark ? PetBloomColors.borderDark : PetBloomColors.border;
 
   const loadNames = useCallback(async () => {
     const [pochi, mochi] = await Promise.all([
@@ -166,14 +166,14 @@ const styles = StyleSheet.create({
     marginLeft: 44,
   },
   saveButton: {
-    backgroundColor: PetPalColors.primary,
+    backgroundColor: PetBloomColors.primary,
     borderRadius: 16,
     paddingVertical: 16,
     alignItems: 'center',
     marginTop: 4,
   },
   saveButtonSaved: {
-    backgroundColor: PetPalColors.thriving,
+    backgroundColor: PetBloomColors.thriving,
   },
   saveButtonText: {
     color: '#ffffff',

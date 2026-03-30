@@ -1,11 +1,80 @@
 # Changelog
 
-All notable changes to PetPal are documented here.
+All notable changes to PetBloom are documented here.
 Format: `[Phase X · Session Y] — Description`
 
 ---
 
 ## [Unreleased]
+
+### App renamed: PetPal → PetBloom
+
+#### Changed
+
+- `app.json` — `name`/`slug` → `PetBloom`; `scheme` → `petbloom`; `package` → `com.petbloom.app`
+- `package.json` — `name` → `petbloom`
+- `src/constants/Colors.ts` — export renamed `PetPalColors` → `PetBloomColors`; updated in all 12 consumer files (`app/`, `components/`)
+- `components/evolution-celebration.tsx` — share text hashtag `#PetPal` → `#PetBloom`
+- All docs (`CLAUDE.md`, `CHANGELOG.md`, `README.md`, `docs/notifications.md`, `docs/feed-pet-design.md`) — text references updated
+
+#### Fixed
+
+- `app/(tabs)/index.tsx` — feed button on Home screen now shows the fish's name (reads `STORAGE_KEYS.FEED_PET_NAME`) instead of incorrectly showing the focus pet's name; `fishName` state added and loaded in `loadData` alongside other storage reads
+
+---
+
+### Phase 4 · Session 16–17 — Onboarding Overhaul, Settings & UX Reframe
+
+#### Added
+
+- `src/utils/petName.ts` — `normalizePetName(input, fallback)` pure utility: trims whitespace, caps at 12 chars, falls back to default if empty; 5 tests in `src/utils/__tests__/petName.test.ts`
+- `app/settings.tsx` — Settings screen accessible from gear icon on Home header:
+  - Two editable name fields: focus buddy (Pochi) + daily fish (Mochi)
+  - Saves to `STORAGE_KEYS.PET_NAME` and `STORAGE_KEYS.FEED_PET_NAME` on confirm
+  - Save button turns green with ✓ confirmation; names reload on screen focus
+- `app/_layout.tsx` — registered `settings` route in root Stack
+- `components/ui/icon-symbol.tsx` — added `gearshape.fill` → `settings` (MaterialIcons) mapping
+
+#### Changed
+
+- `app/onboarding.tsx` — full 5-step overhaul (was 4 steps: Welcome → Name → How It Works → Permissions):
+  - **Welcome** — two floating eggs with staggered animation (`translateY` loop offset by 500ms); copy: "Meet your new friends!"
+  - **Meet Pochi** — wiggling egg + Pochi description ("Put your phone down and I'll grow") + name input; rename hint above CTA: "You can rename them anytime in Settings"
+  - **Meet Mochi** — wiggling egg + Mochi description ("Feed me once a day and I'll grow") + name input; same rename hint
+  - **How It Works** — updated rows: `🐾 Spend time with [Pochi]` / `🐟 Feed [Mochi] daily` / `✨ Watch both grow`; now uses chosen pet names
+  - **Notifications** — replaces Permissions step; requests `expo-notifications` permission via `requestPermissionsAsync()`; copy: "Don't let us starve!"; skip completes onboarding either way
+  - Both `finishOnboarding` writes: `PET_NAME`, `FEED_PET_NAME` (via `normalizePetName`), `ONBOARDING_COMPLETE`
+  - Rename hint placed outside `center` flex block (in `bottomGroup` with button) so it stays visible when keyboard is open
+- `app/feed.tsx` — first-feed hatching animation (one-time, never replays):
+  - Before first feed: shows `🥚` egg with heading "Tap to hatch [name]!"
+  - Each of 3 taps: egg rotates ±18° wiggle via `eggShakeAnim`
+  - On third tap (first feed complete): shake sequence → egg scales up + fades out → fish springs in with bounce overshoot; heading changes to "Meet [name]! 🐟"
+  - Egg and fish both `position: 'absolute'` in a fixed 160×160 `petContainer` — prevents vertical stacking artefact during simultaneous render
+  - `hatchAnim` and `eggShakeAnim` reset in `loadData` on screen re-focus
+- `app/(tabs)/index.tsx` — gear icon (top-right header) navigates to `/settings`; Home CTA copy updated (see UX reframe below)
+
+#### UX Reframe: "Focus Session" → Pochi-centric language
+
+All "focus" framing replaced with phone-down / Pochi-centric copy:
+
+| Location | Before | After |
+|---|---|---|
+| Tab label | `Focus` | `Step Away` |
+| Setup screen title | `Focus Session` | `Time with [name]` |
+| Pet caption | `[name] is ready to focus!` | `[name] is waiting for you` |
+| Active session title | `Stay focused!` | `You're with [name] ☁️` |
+| Active session hint | `[name] is cheering you on` | `Phone down. [name] needs you.` |
+| Give up | `Give up` | `Go back to my phone` |
+| Completion heading | `Session complete!` | `You showed up! 🎉` |
+| Completion body | `You focused for X mins. [name] is so proud!` | `X minutes with [name]. [name] loved every minute.` |
+| Save button | `Save session 🌟` | `Count this time 🌟` |
+| Cheat button | `Don't save — I cheated` | `Don't save — I looked at my phone` |
+| Home CTA | `🎯 Start Focus Session` | `🐾 Time with [name]` |
+| Home stat | `Focus today` | `Away time` |
+| Home stat | `Sessions` | `Visits` |
+| Stats screen | `Focus time` | `Away time` |
+
+---
 
 ### Phase 4 · Sessions 14–15 (partial) — Feed Mechanic
 
@@ -87,7 +156,7 @@ Format: `[Phase X · Session Y] — Description`
   - Start button transitions to active session view: `CircularCountdown` + pet encouragement hint + Give Up button
   - Give Up button calls `handleGiveUp` → clears `sessionActive`, returns to setup
   - `handleSessionComplete` persists session on completion: calls `resetDailyDataIfNeeded()`, increments and persists `TOTAL_SESSIONS_EVER` / `SESSIONS_TODAY` / `FOCUS_TIME_TODAY`, calls `calculateMood()` with fresh values, refreshes pet emoji in case an evolution threshold was crossed
-  - Completion modal: dark-mode aware card, `PetPalColors.scrim` backdrop, pet emoji + duration summary + "Awesome!" dismiss button
+  - Completion modal: dark-mode aware card, `PetBloomColors.scrim` backdrop, pet emoji + duration summary + "Awesome!" dismiss button
   - `useFocusEffect` cleanup cancels active session on blur (not on next focus) — `CircularCountdown` cannot continue offscreen or fire `handleSessionComplete` after navigation
   - `sessionComplete` is NOT reset by `useFocusEffect` — modal persists until explicitly dismissed
 
@@ -110,7 +179,7 @@ Format: `[Phase X · Session Y] — Description`
 - `app/(tabs)/focus.tsx` — full rebuild replacing placeholder:
   - Reads `petName` + `totalSessionsEver` from storage on focus; derives `petEmoji` via `getEvolutionStage` → `EVOLUTION_CONFIG`
   - `<CircularSlider value={duration} onChange={setDuration} />` wired with `useState(25)` default
-  - Preset chips (5 / 15 / 30 / 60) as `Pressable`; active chip highlighted with `PetPalColors.primary` background
+  - Preset chips (5 / 15 / 30 / 60) as `Pressable`; active chip highlighted with `PetBloomColors.primary` background
   - Pet emoji preview with `"[Name] is ready to focus!"` caption
   - Music toggle (Rain sounds) — state-only (`musicEnabled`); playback wired in Phase 5
   - Start button (`Pressable`) — navigation/timer logic stubbed for Session 10
@@ -199,7 +268,7 @@ Format: `[Phase X · Session Y] — Description`
 
 - `app/(tabs)/index.tsx` — full Home screen layout replacing Phase 1 placeholder:
   - Time-of-day greeting + formatted date header
-  - Streak badge (`🔥 N day streak`) with `PetPalColors.streak` styling
+  - Streak badge (`🔥 N day streak`) with `PetBloomColors.streak` styling
   - Pet emoji driven by `totalSessionsEver` → `getEvolutionStage()` → `EVOLUTION_CONFIG` (all 6 stages)
   - Mood label + random daily message from `MOOD_CONFIG` per current mood
   - XP progress bar showing sessions progress toward next evolution stage
@@ -208,7 +277,7 @@ Format: `[Phase X · Session Y] — Description`
   - Today's stats row: Focus time (minutes) | Sessions count | Personal best
   - All data loaded in parallel via `Promise.all`; screen refreshes on focus via `useFocusEffect`
 - `app/feed.tsx` — placeholder feed screen for navigation wiring (full implementation in Phase 4, Session 14)
-- `src/constants/Colors.ts` — added `white: '#ffffff'` to `PetPalColors`
+- `src/constants/Colors.ts` — added `white: '#ffffff'` to `PetBloomColors`
 
 ### Changed
 
@@ -262,7 +331,7 @@ Format: `[Phase X · Session Y] — Description`
 - `src/storage/AppStorage.ts` — typed `getItem<T>`, `setItem<T>`, `removeItem`, `clearAll`, `getMultiple<T>` wrappers
 - `src/storage/seedData.ts` — `initializeDefaultsIfNeeded()` (first launch defaults) and `resetDailyDataIfNeeded()` (midnight reset + streak check)
 - `src/constants/PetStates.ts` — `MoodState` type, `MOOD_CONFIG`, `EvolutionStage` type, `EVOLUTION_CONFIG`, `EVOLUTION_ORDER`, helpers: `getEvolutionStage()`, `getNextEvolutionStage()`, `sessionsToNextEvolution()`
-- `src/constants/Colors.ts` — `PetPalColors` flat palette (primary, accent, mood colors, streak orange, focus bar, surfaces)
+- `src/constants/Colors.ts` — `PetBloomColors` flat palette (primary, accent, mood colors, streak orange, focus bar, surfaces)
 - Installed `@react-native-async-storage/async-storage`
 
 ### Changed
@@ -285,9 +354,9 @@ Format: `[Phase X · Session Y] — Description`
 
 ### Changed
 
-- `app/(tabs)/index.tsx` — replaced Expo starter content with PetPal Home placeholder (pet emoji, streak, buttons, stats row)
-- `app/(tabs)/_layout.tsx` — replaced 2 default tabs (Home, Explore) with 4 PetPal tabs
+- `app/(tabs)/index.tsx` — replaced Expo starter content with PetBloom Home placeholder (pet emoji, streak, buttons, stats row)
+- `app/(tabs)/_layout.tsx` — replaced 2 default tabs (Home, Explore) with 4 PetBloom tabs
 
 ### Removed
 
-- `app/(tabs)/explore.tsx` — default Expo starter screen, replaced by PetPal tabs
+- `app/(tabs)/explore.tsx` — default Expo starter screen, replaced by PetBloom tabs

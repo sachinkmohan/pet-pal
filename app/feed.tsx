@@ -7,7 +7,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
 import { useColorScheme } from "@/hooks/use-color-scheme";
-import { PetPalColors } from "@/src/constants/Colors";
+import { PetBloomColors } from "@/src/constants/Colors";
 import {
   canFeed,
   feedProgressPercent,
@@ -75,9 +75,9 @@ export default function FeedScreen() {
   const remaining = feedsToNextStage(totalFeeds);
   const progressPercent = feedProgressPercent(totalFeeds);
   const textMuted = isDark
-    ? PetPalColors.textMutedDark
-    : PetPalColors.textMuted;
-  const trackColor = isDark ? PetPalColors.surfaceDark : PetPalColors.surface;
+    ? PetBloomColors.textMutedDark
+    : PetBloomColors.textMuted;
+  const trackColor = isDark ? PetBloomColors.surfaceDark : PetBloomColors.surface;
 
   const loadData = useCallback(async () => {
     const [name, feeds, lastFed] = await Promise.all([
@@ -155,7 +155,7 @@ export default function FeedScreen() {
   async function handleTap() {
     if (!feedAvailable || justCompleted) return;
 
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
     animateTap(isFirstFeed);
     spawnParticles();
 
@@ -174,15 +174,15 @@ export default function FeedScreen() {
       setTotalFeeds(newTotal);
       setLastFedTime(now);
       setJustCompleted(true);
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       setTimeout(
         () =>
-          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success),
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error),
         180,
       );
       setTimeout(
         () =>
-          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success),
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error),
         360,
       );
     }
@@ -346,10 +346,10 @@ export default function FeedScreen() {
                   {
                     backgroundColor:
                       i < tapCount
-                        ? PetPalColors.accent
+                        ? PetBloomColors.accent
                         : isDark
-                          ? PetPalColors.surfaceDark
-                          : PetPalColors.surface,
+                          ? PetBloomColors.surfaceDark
+                          : PetBloomColors.surface,
                   },
                 ]}
               />
@@ -452,7 +452,7 @@ const styles = StyleSheet.create({
   progressFill: {
     height: "100%",
     borderRadius: 3,
-    backgroundColor: PetPalColors.accent,
+    backgroundColor: PetBloomColors.accent,
   },
   dotsRow: {
     flexDirection: "row",

@@ -4,7 +4,7 @@ import { Animated, Modal, Pressable, Share, StyleSheet, View } from 'react-nativ
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
 import { ThemedText } from '@/components/themed-text';
-import { PetPalColors } from '@/src/constants/Colors';
+import { PetBloomColors } from '@/src/constants/Colors';
 import { EVOLUTION_CONFIG, EvolutionStage } from '@/src/constants/PetStates';
 
 interface Props {
@@ -29,12 +29,12 @@ export function EvolutionCelebration({
   const opacityAnim = useRef(new Animated.Value(0)).current;
 
   const config = EVOLUTION_CONFIG[newStage];
-  const shareText = `${petName} just evolved into ${config.name}! 🎉\n${totalSessions} focus sessions completed.\n#PetPal`;
+  const shareText = `${petName} just evolved into ${config.name}! 🎉\n${totalSessions} focus sessions completed.\n#PetBloom`;
 
   // Theme-aware tokens for secondary UI
-  const rewardColor = isDark ? PetPalColors.textMutedDark : PetPalColors.textMuted;
-  const shareCardBg = isDark ? PetPalColors.surfaceDark : PetPalColors.primaryLight;
-  const shareButtonBg = isDark ? PetPalColors.surfaceDark : PetPalColors.surface;
+  const rewardColor = isDark ? PetBloomColors.textMutedDark : PetBloomColors.textMuted;
+  const shareCardBg = isDark ? PetBloomColors.surfaceDark : PetBloomColors.primaryLight;
+  const shareButtonBg = isDark ? PetBloomColors.surfaceDark : PetBloomColors.surface;
 
   useEffect(() => {
     if (visible) {
@@ -77,7 +77,7 @@ export function EvolutionCelebration({
           style={[
             styles.card,
             {
-              backgroundColor: isDark ? PetPalColors.backgroundDark : PetPalColors.background,
+              backgroundColor: isDark ? PetBloomColors.backgroundDark : PetBloomColors.background,
               transform: [{ scale: scaleAnim }],
               opacity: opacityAnim,
             },
@@ -97,7 +97,7 @@ export function EvolutionCelebration({
 
           {/* Evolution message */}
           <ThemedText style={styles.evolvedHeading}>{petName} evolved!</ThemedText>
-          <ThemedText style={[styles.stageName, { color: PetPalColors.primary }]}>
+          <ThemedText style={[styles.stageName, { color: PetBloomColors.primary }]}>
             {config.name}
           </ThemedText>
           <ThemedText style={[styles.rewardText, { color: rewardColor }]}>
@@ -119,7 +119,7 @@ export function EvolutionCelebration({
               ]}
               onPress={handleShare}
             >
-              <ThemedText style={[styles.shareButtonText, { color: PetPalColors.primary }]}>
+              <ThemedText style={[styles.shareButtonText, { color: PetBloomColors.primary }]}>
                 Share 🎊
               </ThemedText>
             </Pressable>
@@ -127,7 +127,7 @@ export function EvolutionCelebration({
             <Pressable
               style={({ pressed }) => [
                 styles.dismissButton,
-                { backgroundColor: PetPalColors.primary, opacity: pressed ? 0.85 : 1 },
+                { backgroundColor: PetBloomColors.primary, opacity: pressed ? 0.85 : 1 },
               ]}
               onPress={onDismiss}
             >
@@ -143,7 +143,7 @@ export function EvolutionCelebration({
 const styles = StyleSheet.create({
   backdrop: {
     flex: 1,
-    backgroundColor: PetPalColors.scrim,
+    backgroundColor: PetBloomColors.scrim,
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 24,
@@ -219,7 +219,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   dismissButtonText: {
-    color: PetPalColors.white,
+    color: PetBloomColors.white,
     fontSize: 16,
     fontWeight: '700',
   },

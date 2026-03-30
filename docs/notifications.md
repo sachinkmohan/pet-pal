@@ -1,4 +1,4 @@
-# PetPal Notifications
+# PetBloom Notifications
 
 ## Session Running (implemented)
 

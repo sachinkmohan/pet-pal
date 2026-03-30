@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "PetPal",
-    "slug": "PetPal",
+    "name": "PetBloom",
+    "slug": "PetBloom",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "petpal",
+    "scheme": "petbloom",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
@@ -24,7 +24,7 @@
         "android.permission.POST_NOTIFICATIONS",
         "android.permission.VIBRATE"
       ],
-      "package": "com.ecmalayalam.PetPal"
+      "package": "com.petbloom.app"
     },
     "web": {
       "output": "static",

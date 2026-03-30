@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Animated, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
-import { PetPalColors } from '@/src/constants/Colors';
+import { PetBloomColors } from '@/src/constants/Colors';
 
 interface GraceOverlayProps {
   visible: boolean;
@@ -63,7 +63,7 @@ export function GraceOverlay({
         <ThemedText style={styles.heading}>Your session is about to end!</ThemedText>
         <ThemedText style={styles.sub}>Come back to keep your streak alive</ThemedText>
         <ThemedText style={styles.countdown}>{secondsLeft}</ThemedText>
-        <ThemedText style={[styles.sub, { color: PetPalColors.textMuted }]}>
+        <ThemedText style={[styles.sub, { color: PetBloomColors.textMuted }]}>
           seconds remaining
         </ThemedText>
       </View>
@@ -74,7 +74,7 @@ export function GraceOverlay({
 const styles = StyleSheet.create({
   container: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: PetPalColors.scrim,
+    backgroundColor: PetBloomColors.scrim,
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 24,
@@ -82,7 +82,7 @@ const styles = StyleSheet.create({
   },
   card: {
     width: '100%',
-    backgroundColor: PetPalColors.white,
+    backgroundColor: PetBloomColors.white,
     borderRadius: 24,
     padding: 28,
     alignItems: 'center',
@@ -96,7 +96,7 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: '700',
     textAlign: 'center',
-    color: PetPalColors.sick,
+    color: PetBloomColors.sick,
   },
   sub: {
     fontSize: 14,
@@ -105,7 +105,7 @@ const styles = StyleSheet.create({
   countdown: {
     fontSize: 64,
     fontWeight: '800',
-    color: PetPalColors.sick,
+    color: PetBloomColors.sick,
     lineHeight: 72,
   },
 });

@@ -4,7 +4,7 @@ import Svg, { Circle, Path } from 'react-native-svg';
 
 import { ThemedText } from '@/components/themed-text';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { PetPalColors } from '@/src/constants/Colors';
+import { PetBloomColors } from '@/src/constants/Colors';
 
 // Fixed dimensions
 const SIZE = 240;
@@ -84,7 +84,7 @@ export function CircularSlider({ value, onChange }: Props) {
 
   const angle = valueToDeg(value);
   const thumb = degToXY(angle, TRACK_RADIUS);
-  const trackColor = isDark ? PetPalColors.surfaceDark : PetPalColors.surface;
+  const trackColor = isDark ? PetBloomColors.surfaceDark : PetBloomColors.surface;
   const arcPath = buildArcPath(value);
 
   return (
@@ -104,7 +104,7 @@ export function CircularSlider({ value, onChange }: Props) {
         {arcPath !== '' && (
           <Path
             d={arcPath}
-            stroke={PetPalColors.primary}
+            stroke={PetBloomColors.primary}
             strokeWidth={STROKE_WIDTH}
             fill="none"
             strokeLinecap="round"
@@ -116,14 +116,14 @@ export function CircularSlider({ value, onChange }: Props) {
           cx={thumb.x}
           cy={thumb.y}
           r={THUMB_RADIUS}
-          fill={PetPalColors.primary}
+          fill={PetBloomColors.primary}
         />
         {/* Thumb inner dot */}
         <Circle
           cx={thumb.x}
           cy={thumb.y}
           r={THUMB_RADIUS / 2.5}
-          fill={PetPalColors.white}
+          fill={PetBloomColors.white}
         />
       </Svg>
 
@@ -133,7 +133,7 @@ export function CircularSlider({ value, onChange }: Props) {
         <ThemedText
           style={[
             styles.unitText,
-            { color: isDark ? PetPalColors.textMutedDark : PetPalColors.textMuted },
+            { color: isDark ? PetBloomColors.textMutedDark : PetBloomColors.textMuted },
           ]}
         >
           min

@@ -30,12 +30,14 @@ eas build --platform android
 ```
 app/
   _layout.tsx          # Root Stack: checks onboarding on mount, controls SplashScreen
-  onboarding.tsx       # Multi-step onboarding (4 steps via useState, no sub-routing)
-  feed.tsx             # Feed screen (placeholder → full impl in Phase 4); pushed from Home button
+  onboarding.tsx       # Multi-step onboarding (5 steps via useState, no sub-routing)
+                       # Steps: welcome → meet-pochi → meet-mochi → how-it-works → notifications
+  feed.tsx             # Feed screen; pushed from Home button
+  settings.tsx         # Settings screen (pet renaming); pushed from Home header gear icon
   (tabs)/
-    _layout.tsx        # Bottom tab navigator (Home / Focus / Stats / Journey)
-    index.tsx          # Home screen
-    focus.tsx          # Focus session screen
+    _layout.tsx        # Bottom tab navigator (Home / Step Away / Stats / Journey)
+    index.tsx          # Home screen (gear icon → /settings)
+    focus.tsx          # "Step Away" screen (formerly Focus)
     stats.tsx          # Stats screen
     journey.tsx        # Pet evolution timeline
   modal.tsx
@@ -54,7 +56,7 @@ src/
   constants/
     PetStates.ts     # MoodState type, MOOD_CONFIG, EvolutionStage type, EVOLUTION_CONFIG,
                      # helpers: getEvolutionStage(), getNextEvolutionStage(), sessionsToNextEvolution()
-    Colors.ts        # PetPalColors palette (primary, accent, mood colors, etc.)
+    Colors.ts        # PetBloomColors palette (primary, accent, mood colors, etc.)
   services/
     MoodService.ts          # calculateMood(MoodInput): MoodState — all 5 states, real-time calculation
                             # also exports FEED_COOLDOWN_MS (20 hrs); import from here, never redefine
@@ -68,7 +70,10 @@ src/
                             # canFeed, timeUntilNextFeed, feedsToNextStage, feedProgressPercent
   storage/
     recentDurations.ts      # addRecentDuration(existing, duration) — deduplicates, caps at 3
-                            # Used by Focus screen quick-start chips
+                            # Used by Step Away screen quick-start chips
+  utils/
+    petName.ts              # normalizePetName(input, fallback) — trim, cap 12 chars, fallback if empty
+                            # Used by onboarding + settings to validate pet names before saving
 ```
 
 Everything persisted uses `STORAGE_KEYS` — never use raw strings. All storage access goes through `AppStorage.ts` helpers which handle `JSON.parse/stringify` automatically.
@@ -77,7 +82,7 @@ Everything persisted uses `STORAGE_KEYS` — never use raw strings. All storage 
 
 `@/*` maps to the repo root. Use `@/src/...`, `@/components/...`, `@/constants/...`, `@/hooks/...`.
 
-### PetPal components — `components/`
+### PetBloom components — `components/`
 
 Domain components built so far (use these rather than re-implementing inline):
 
@@ -91,7 +96,7 @@ Domain components built so far (use these rather than re-implementing inline):
 ### Theming
 
 - `constants/theme.ts` — `Colors` (light/dark tab tints) + `Fonts` (platform-specific font stacks). Used by existing components (`ThemedText`, `ThemedView`, tab layout).
-- `src/constants/Colors.ts` — `PetPalColors` flat palette for new screens (mood colors, streak orange, focus bar blue, etc.).
+- `src/constants/Colors.ts` — `PetBloomColors` flat palette for new screens (mood colors, streak orange, focus bar blue, etc.).
 - `hooks/use-color-scheme.ts` — wraps `useColorScheme` for light/dark detection.
 - `components/themed-text.tsx` / `components/themed-view.tsx` — use these for text and container views in new screens.
 

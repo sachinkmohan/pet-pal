@@ -15,7 +15,7 @@ import { ThemedView } from "@/components/themed-view";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { XpProgressBar } from "@/components/xp-progress-bar";
 import { useColorScheme } from "@/hooks/use-color-scheme";
-import { PetPalColors } from "@/src/constants/Colors";
+import { PetBloomColors } from "@/src/constants/Colors";
 import {
   EVOLUTION_CONFIG,
   EVOLUTION_ORDER,
@@ -54,6 +54,7 @@ export default function HomeScreen() {
   const isDark = colorScheme === "dark";
 
   const [petName, setPetName] = useState("Pochi");
+  const [fishName, setFishName] = useState("Mochi");
   const [currentStreak, setCurrentStreak] = useState(0);
   const [sessionsToday, setSessionsToday] = useState(0);
   const [focusTimeToday, setFocusTimeToday] = useState(0);
@@ -68,6 +69,7 @@ export default function HomeScreen() {
   const loadData = useCallback(async () => {
     const [
       name,
+      feedName,
       streak,
       sessToday,
       focusTime,
@@ -78,6 +80,7 @@ export default function HomeScreen() {
       storedStage,
     ] = await Promise.all([
       getItem<string>(STORAGE_KEYS.PET_NAME),
+      getItem<string>(STORAGE_KEYS.FEED_PET_NAME),
       getItem<number>(STORAGE_KEYS.CURRENT_STREAK),
       getItem<number>(STORAGE_KEYS.SESSIONS_TODAY),
       getItem<number>(STORAGE_KEYS.FOCUS_TIME_TODAY),
@@ -114,6 +117,7 @@ export default function HomeScreen() {
     }
 
     setPetName(name ?? "Pochi");
+    setFishName(feedName ?? "Mochi");
     setCurrentStreak(streak ?? 0);
     setSessionsToday(sessions);
     setFocusTimeToday(focusTime ?? 0);
@@ -154,11 +158,11 @@ export default function HomeScreen() {
   const moodConfig = MOOD_CONFIG[mood];
 
   // Theme-aware colors
-  const surface = isDark ? PetPalColors.surfaceDark : PetPalColors.surface;
-  const border = isDark ? PetPalColors.borderDark : PetPalColors.border;
+  const surface = isDark ? PetBloomColors.surfaceDark : PetBloomColors.surface;
+  const border = isDark ? PetBloomColors.borderDark : PetBloomColors.border;
   const textMuted = isDark
-    ? PetPalColors.textMutedDark
-    : PetPalColors.textMuted;
+    ? PetBloomColors.textMutedDark
+    : PetBloomColors.textMuted;
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -193,11 +197,11 @@ export default function HomeScreen() {
           <View
             style={[
               styles.streakBadge,
-              { backgroundColor: PetPalColors.primaryLight },
+              { backgroundColor: PetBloomColors.primaryLight },
             ]}
           >
             <ThemedText
-              style={[styles.streakText, { color: PetPalColors.streak }]}
+              style={[styles.streakText, { color: PetBloomColors.streak }]}
             >
               🔥 {currentStreak} day streak
             </ThemedText>
@@ -208,7 +212,7 @@ export default function HomeScreen() {
             <ThemedText style={styles.petEmoji}>{petEmoji}</ThemedText>
             <ThemedText style={styles.petName}>{petName}</ThemedText>
             <ThemedText
-              style={[styles.moodLabel, { color: PetPalColors[mood] }]}
+              style={[styles.moodLabel, { color: PetBloomColors[mood] }]}
             >
               {moodConfig.emoji} {moodConfig.label}
             </ThemedText>
@@ -231,7 +235,7 @@ export default function HomeScreen() {
               style={({ pressed }) => [
                 styles.button,
                 {
-                  backgroundColor: PetPalColors.primary,
+                  backgroundColor: PetBloomColors.primary,
                   opacity: pressed ? 0.85 : 1,
                 },
               ]}
@@ -246,7 +250,7 @@ export default function HomeScreen() {
               style={({ pressed }) => [
                 styles.button,
                 {
-                  backgroundColor: PetPalColors.accent,
+                  backgroundColor: PetBloomColors.accent,
                   opacity: pressed ? 0.85 : 1,
                 },
               ]}
@@ -254,7 +258,7 @@ export default function HomeScreen() {
             >
               <View style={styles.feedButtonInner}>
                 <ThemedText style={styles.buttonText}>
-                  🍎 Feed {petName}
+                  🍎 Feed {fishName}
                 </ThemedText>
                 {feedAvailable && <View style={styles.feedDot} />}
               </View>
@@ -265,7 +269,7 @@ export default function HomeScreen() {
           <View style={[styles.statsRow, { backgroundColor: surface }]}>
             <View style={styles.stat}>
               <ThemedText
-                style={[styles.statValue, { color: PetPalColors.focusBar }]}
+                style={[styles.statValue, { color: PetBloomColors.focusBar }]}
               >
                 {focusTimeToday}m
               </ThemedText>
@@ -283,7 +287,7 @@ export default function HomeScreen() {
             <View style={[styles.statDivider, { backgroundColor: border }]} />
             <View style={styles.stat}>
               <ThemedText
-                style={[styles.statValue, { color: PetPalColors.thriving }]}
+                style={[styles.statValue, { color: PetBloomColors.thriving }]}
               >
                 {personalBest}m
               </ThemedText>
@@ -384,7 +388,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   buttonText: {
-    color: PetPalColors.white,
+    color: PetBloomColors.white,
     fontSize: 16,
     fontWeight: "600",
   },
@@ -397,7 +401,7 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: PetPalColors.white,
+    backgroundColor: PetBloomColors.white,
   },
   statsRow: {
     flexDirection: "row",

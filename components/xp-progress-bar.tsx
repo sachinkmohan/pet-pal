@@ -2,7 +2,7 @@ import { StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { PetPalColors } from '@/src/constants/Colors';
+import { PetBloomColors } from '@/src/constants/Colors';
 import {
   EVOLUTION_CONFIG,
   EvolutionStage,
@@ -26,14 +26,14 @@ export function XpProgressBar({ totalSessionsEver, currentStage }: Props) {
   const progress =
     nextMin !== null ? (totalSessionsEver - currentMin) / (nextMin - currentMin) : 1;
 
-  const surface = isDark ? PetPalColors.surfaceDark : PetPalColors.surface;
-  const border = isDark ? PetPalColors.borderDark : PetPalColors.border;
-  const textMuted = isDark ? PetPalColors.textMutedDark : PetPalColors.textMuted;
+  const surface = isDark ? PetBloomColors.surfaceDark : PetBloomColors.surface;
+  const border = isDark ? PetBloomColors.borderDark : PetBloomColors.border;
+  const textMuted = isDark ? PetBloomColors.textMutedDark : PetBloomColors.textMuted;
 
   if (nextStage === null) {
     return (
       <View style={styles.container}>
-        <ThemedText style={[styles.maxLabel, { color: PetPalColors.thriving }]}>
+        <ThemedText style={[styles.maxLabel, { color: PetBloomColors.thriving }]}>
           🏆 Maximum evolution reached!
         </ThemedText>
       </View>
@@ -58,7 +58,7 @@ export function XpProgressBar({ totalSessionsEver, currentStage }: Props) {
           style={[
             styles.barFill,
             {
-              backgroundColor: PetPalColors.primary,
+              backgroundColor: PetBloomColors.primary,
               width: `${Math.min(progress * 100, 100)}%`,
             },
           ]}
