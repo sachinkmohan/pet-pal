@@ -39,9 +39,6 @@ export default function FocusScreen() {
   // Machine ref — single instance per screen mount
   const machineRef = useRef<FocusStateMachine | null>(null);
   const sessionDurationRef = useRef(duration);
-  const petNameRef = useRef(petName);
-
-  petNameRef.current = petName;
   const sessionActive = sessionState === 'active';
 
   const loadData = useCallback(async () => {
@@ -91,11 +88,11 @@ export default function FocusScreen() {
   }, []);
 
   function handleStart(overrideSecs?: number) {
-    if (sessionState !== 'idle') return;
+    if (sessionState !== 'idle' || !machineRef.current) return;
     const totalSecs = overrideSecs ?? duration * 60;
     sessionDurationRef.current = totalSecs / 60;
     if (overrideSecs !== undefined) setDuration(overrideSecs / 60);
-    machineRef.current?.startSession();
+    machineRef.current.startSession();
     showSessionNotification(petName, totalSecs);
   }
 
@@ -278,15 +275,16 @@ export default function FocusScreen() {
               </ThemedText>
             </Pressable>
 
-            {/* DEV: quick 10-second test session */}
-            <Pressable
-              style={({ pressed }) => [styles.testButton, { opacity: pressed ? 0.7 : 1 }]}
-              onPress={() => handleStart(10)}
-            >
-              <ThemedText style={[styles.testButtonText, { color: textMuted }]}>
-                ⚡ 10s test
-              </ThemedText>
-            </Pressable>
+            {__DEV__ && (
+              <Pressable
+                style={({ pressed }) => [styles.testButton, { opacity: pressed ? 0.7 : 1 }]}
+                onPress={() => handleStart(10)}
+              >
+                <ThemedText style={[styles.testButtonText, { color: textMuted }]}>
+                  ⚡ 10s test
+                </ThemedText>
+              </Pressable>
+            )}
           </ScrollView>
         )}
       </ThemedView>
