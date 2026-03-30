@@ -60,6 +60,7 @@ export default function FocusScreen() {
     loadData();
     return () => {
       machineRef.current?.giveUp();
+      cancelSessionNotification();
     };
   }, [loadData]));
 
@@ -90,6 +91,7 @@ export default function FocusScreen() {
   }, []);
 
   function handleStart(overrideSecs?: number) {
+    if (sessionState !== 'idle') return;
     const totalSecs = overrideSecs ?? duration * 60;
     sessionDurationRef.current = totalSecs / 60;
     if (overrideSecs !== undefined) setDuration(overrideSecs / 60);
