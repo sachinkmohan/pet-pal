@@ -22,6 +22,7 @@ import {
 } from "@/src/services/NotificationService";
 import { getItem, setItem } from "@/src/storage/AppStorage";
 import { STORAGE_KEYS } from "@/src/storage/keys";
+import { updateStreakAfterSession } from "@/src/services/StreakService";
 import { addRecentDuration } from "@/src/storage/recentDurations";
 import { resetDailyDataIfNeeded } from "@/src/storage/seedData";
 
@@ -145,6 +146,8 @@ export default function FocusScreen() {
       lastFedTime: lastFedTime ?? null,
       screenTimeEnabled: statsEnabled ?? false,
     });
+
+    await updateStreakAfterSession();
 
     const stage = getEvolutionStage(newTotal);
     setPetEmoji(EVOLUTION_CONFIG[stage].emoji);
