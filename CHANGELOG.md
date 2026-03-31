@@ -7,6 +7,53 @@ Format: `[Phase X · Session Y] — Description`
 
 ## [Unreleased]
 
+---
+
+### Phase 6 · Session 20 — Stats Screen & Duration Picker
+
+#### Added
+
+- `src/services/StatsService.ts` — pure stats transformation functions (9 tests):
+  - `buildWeekBars(weeklyData, focusTimeToday)` — 7-bar dataset: last 6 from `WEEKLY_FOCUS_DATA` + today's `FOCUS_TIME_TODAY`; pads with zeros when fewer than 7 stored days
+  - `buildDayLabels(now)` — 7 day labels (e.g. `['Wed', 'Thu', …, 'Today']`) derived from current date
+  - `findPeakIndex(bars)` — index of tallest bar; returns `-1` when all bars are zero; ties go to latest entry
+- `src/services/StreakService.ts` — pure streak logic + storage wiring (8 tests):
+  - `calculateStreak(input): StreakResult` — pure function; qualifies when `sessionsToday ≥ 1` AND fed within 24h; idempotent for the same day; handles day gap (resets to 1), consecutive days (streak + 1), and longest streak tracking
+  - `updateStreakAfterSession()` — reads storage, calls `calculateStreak`, writes `CURRENT_STREAK`, `LAST_STREAK_DATE`, `LONGEST_STREAK`
+  - Called in `saveSessionData` in `focus.tsx` — streak now updates in real-time on session save, not just at midnight
+- `src/utils/durationPicker.ts` — pure duration utilities (21 tests):
+  - `minutesToHHMM(minutes)` → `{ hours, mins }`
+  - `HHMMToMinutes(hours, mins)` → total minutes
+  - `formatDuration(minutes)` → human-readable string: `"25m"`, `"1h"`, `"1h 20m"` — applied to all stat displays
+  - `clampDuration(minutes)` → clamped to `[1, 355]` (1 min – 5h 55m)
+  - `DURATION_MIN = 1`, `DURATION_MAX = 355`
+- `components/duration-picker.tsx` — `<DurationPicker value={minutes} onChange={fn} />`:
+  - Two snap-scroll `ScrollView` columns: hours (0–5) and minutes (0–59)
+  - `nestedScrollEnabled` to work inside the Focus screen's outer `ScrollView`
+  - Selected item highlighted with bold/larger text; selection band rendered via absolute overlay with primary-colour border
+  - Scrolls to initial position on mount via `setTimeout` deferral
+- `STORAGE_KEYS.MANUAL_DURATION_MODE` — boolean; persists toggle state between app opens
+- Manual duration toggle on Focus setup screen: `Switch` component (top-right of picker area); when ON, replaces `CircularSlider` with `DurationPicker`; toggle state loaded from storage on mount and saved immediately on change
+
+#### Changed
+
+- `app/(tabs)/stats.tsx` — fully wired with real storage data:
+  - `useFocusEffect` reloads `FOCUS_TIME_TODAY`, `PERSONAL_BEST`, `WEEKLY_FOCUS_DATA` on screen focus
+  - Weekly bar chart: 7 bars with real data, peak bar highlighted in streak orange, zero bars shown as invisible (no phantom baseline)
+  - Weekly total + daily average shown below chart
+  - All durations formatted with `formatDuration` (e.g. `1h 20m` instead of `80m`)
+  - Screen time "Coming soon" prompt removed
+- `app/(tabs)/index.tsx` — `focusTimeToday` and `personalBest` now formatted with `formatDuration`
+- `src/storage/recentDurations.ts` — cap increased from 3 → 5 entries; tests updated
+- `STORAGE_KEYS.RECENT_DURATIONS` comment updated: "last 5 unique saved session durations"
+- `app/(tabs)/focus.tsx`:
+  - `updateStreakAfterSession()` called after `saveSessionData` writes
+  - Rain sounds toggle removed (music deferred to Phase 5)
+  - Manual duration mode toggle + `DurationPicker` wired in; `MANUAL_DURATION_MODE` loaded and persisted
+- `src/services/NotificationService.ts` — notification body now includes session duration: `"25 min · Ends at 2:30 PM"` (was `"Session ends at 2:30 PM — stay focused!"`); notification no longer cancelled on session complete — stays in tray until user manually dismisses; still cancelled on give-up and screen blur
+
+---
+
 ### App renamed: PetPal → PetBloom
 
 #### Changed

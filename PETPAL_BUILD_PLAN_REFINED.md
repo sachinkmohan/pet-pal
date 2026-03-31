@@ -51,6 +51,11 @@ Changes from the original plan, with rationale:
 | Pet naming | Pochi only, named once, not changeable | **Both Pochi + Mochi named during onboarding; changeable in Settings** | Settings screen added; gear icon on Home header; `normalizePetName()` utility handles validation |
 | First-feed experience | Fish shown immediately | **Egg hatches into fish on first feed** | One-time delight moment — egg wiggles on each tap, cracks and reveals fish with spring animation |
 | Feed haptics | `notificationAsync(Warning)` per tap, `notificationAsync(Success)` on completion | **`notificationAsync(Error)` for all** | Error pattern produces the strongest vibration via this API |
+| Duration input | Circular slider only | **Circular slider + optional HH:MM drum picker behind a `Manual` toggle** | User can set precise durations up to 5h 55m; toggle state persisted so mode is remembered between sessions |
+| Recent durations cap | 3 entries | **5 entries** | More history visible on screen without cluttering; Quick-start chips benefit from longer recall |
+| Session notification body | `"Session ends at X:XX PM — stay focused!"` | **`"25 min · Ends at 2:30 PM"` — duration included; stays in tray after session completes** | User requested duration visible in notification; persistent notification avoids "why did this disappear?" confusion |
+| Stats duration display | Raw minutes (`80m`) | **Formatted (`1h 20m`)** | More readable for longer sessions; `formatDuration()` utility shared across all stat displays |
+| Rain sounds in Focus screen | Planned for Phase 5 | **UI placeholder removed early** | Toggle was non-functional (no audio wired); removing prevents user confusion; music re-added properly in Phase 5 |
 
 ---
 
@@ -827,6 +832,20 @@ Sized for **45-60 minute development sessions**. Each chunk is a self-contained 
 - [x] Show weekly total and daily average
 - [x] `StatsService.ts` — pure functions: `buildWeekBars`, `buildDayLabels`, `findPeakIndex`; 9 TDD tests
 - [x] `stats.tsx` wired with `useFocusEffect` to reload on screen focus
+
+**Unplanned — Duration Picker, formatDuration & UX cleanup (this session)**
+- [x] `src/utils/durationPicker.ts` — pure utilities with 21 TDD tests:
+  - `minutesToHHMM(minutes)` → `{ hours, mins }`
+  - `HHMMToMinutes(hours, mins)` → total minutes
+  - `clampDuration(minutes)` → clamped to `[1, 355]` (max 5h 55m)
+  - `formatDuration(minutes)` → `"25m"` / `"1h"` / `"1h 20m"` — applied to all stat displays (stats.tsx + index.tsx)
+- [x] `components/duration-picker.tsx` — HH:MM snap-scroll drum picker:
+  - Two `ScrollView` columns: hours (0–5), minutes (0–59); `nestedScrollEnabled` avoids VirtualizedList nesting error
+  - Selection band overlay with primary-colour border; selected item bold + larger
+  - `STORAGE_KEYS.MANUAL_DURATION_MODE` persists toggle state between app opens
+- [x] `app/(tabs)/focus.tsx` — `Manual` toggle switch (`Switch` component): when ON replaces `CircularSlider` with `DurationPicker`; mode loaded on mount and saved on change; rain sounds toggle removed (music deferred to Phase 5)
+- [x] `src/storage/recentDurations.ts` — cap increased 3 → 5; tests updated
+- [x] `src/services/NotificationService.ts` — notification body now includes duration (`"25 min · Ends at 2:30 PM"`); notification no longer auto-cancelled on session complete — stays until user manually dismisses; still cancelled on give-up and screen blur; 1 new TDD test
 
 **Session 21: UsageStats Integration (Optional)**
 - [ ] Create native module wrapper for UsageStats API (expo-modules-api)

@@ -68,12 +68,20 @@ src/
                             # No completion notification — end time in start notification is sufficient
     FeedService.ts          # Pure TS feed logic (no RN deps): getFeedPetStage, getFeedPetSize,
                             # canFeed, timeUntilNextFeed, feedsToNextStage, feedProgressPercent
+    StreakService.ts        # calculateStreak(StreakInput): StreakResult — pure, no storage deps
+                            # updateStreakAfterSession() — storage wiring; call after saveSessionData
+                            # Qualifies when sessionsToday ≥ 1 AND fed within 24h; idempotent same day
+    StatsService.ts         # buildWeekBars(weeklyData, focusTimeToday) → number[7]
+                            # buildDayLabels(now) → string[7] ending with 'Today'
+                            # findPeakIndex(bars) → index of tallest bar, -1 if all zero
   storage/
-    recentDurations.ts      # addRecentDuration(existing, duration) — deduplicates, caps at 3
+    recentDurations.ts      # addRecentDuration(existing, duration) — deduplicates, caps at 5
                             # Used by Step Away screen quick-start chips
   utils/
     petName.ts              # normalizePetName(input, fallback) — trim, cap 12 chars, fallback if empty
                             # Used by onboarding + settings to validate pet names before saving
+    durationPicker.ts       # minutesToHHMM, HHMMToMinutes, clampDuration(1–355), formatDuration
+                            # formatDuration: "25m" | "1h" | "1h 20m" — use for all stat displays
 ```
 
 Everything persisted uses `STORAGE_KEYS` — never use raw strings. All storage access goes through `AppStorage.ts` helpers which handle `JSON.parse/stringify` automatically.
@@ -92,6 +100,7 @@ Domain components built so far (use these rather than re-implementing inline):
 - `circular-slider.tsx` — `<CircularSlider value={n} onChange={fn} />` — circular drag picker for focus duration (1–60 min); uses `react-native-svg` + `PanResponder`; self-contained (SIZE=240); renders SVG arc + thumb + duration label overlay
 - `circular-countdown.tsx` — `<CircularCountdown totalSeconds={n} onComplete={fn} />` — depleting arc countdown timer; single interval on mount; `onCompleteRef` prevents stale closure; full-circle path uses two half-arcs; same geometry as `CircularSlider`
 - `grace-overlay.tsx` — 10-second countdown overlay (retained, not currently active); `onExpiredRef` prevents stale closure; fires `onExpired` at zero
+- `duration-picker.tsx` — `<DurationPicker value={minutes} onChange={fn} />` — two snap-scroll columns (H: 0–5, M: 0–59); `nestedScrollEnabled` for use inside outer ScrollView; selection band overlay with primary-colour border
 
 ### Theming
 
@@ -106,15 +115,17 @@ Domain components built so far (use these rather than re-implementing inline):
 
 ### Key domain rules (from build plan)
 
-- **Streak:** Both fed + ≥1 focus session required on the same day. Checked at midnight via `resetDailyDataIfNeeded()`.
+- **Streak:** Both fed + ≥1 focus session required on the same day. Updated in real-time via `updateStreakAfterSession()` after every save (also checked at midnight via `resetDailyDataIfNeeded()`). Pure logic lives in `StreakService.ts`.
 - **Feed cooldown:** 20 hours (not 24) — intentional habit-formation design.
 - **Feed taps:** 3 taps to complete a feed (reduced from 10 after UX research — 2–4 taps is the industry sweet spot for daily rituals).
 - **Feed pet (Mochi):** Separate fish pet on the Feed screen, independent of Pochi. Grows through daily feeding alone via `FeedService` stage thresholds (0/3/10/21/50/100 feeds).
 - **Mood:** Calculated in real-time via `calculateMood()` in `src/services/MoodService.ts`. Call after every session completion and every feed. Pass `screenTimeHours` once `ScreenTimeService` is wired (Phase 6).
 - **Evolution:** Driven by `totalSessionsEver` (never resets). Thresholds: 0/10/25/50/100/200 sessions.
 - **Focus session honesty:** No cheat detection. On session complete, user chooses "Save session" or "Don't save — I cheated". Data only written on explicit save.
-- **Session notification:** Static end-time notification only ("Session ends at X:XX PM"). No completion notification — eliminates Android Doze mode timing issues.
-- **Recent durations:** Last 3 unique saved session durations in `STORAGE_KEYS.RECENT_DURATIONS`. Shown as quick-start chips on Focus screen; hidden on fresh install.
+- **Session notification:** Body format: `"25 min · Ends at 2:30 PM"`. Persists in tray after session completes (user dismisses manually). Cancelled only on give-up or screen blur.
+- **Recent durations:** Last 5 unique saved session durations in `STORAGE_KEYS.RECENT_DURATIONS`. Shown as quick-start chips on Focus screen; hidden on fresh install.
+- **Duration picker:** Focus screen has a `Manual` toggle switch (`STORAGE_KEYS.MANUAL_DURATION_MODE`). When ON, replaces `CircularSlider` with `DurationPicker` (HH:MM snap-scroll). Toggle state persisted — restored on app reopen. Max duration: 5h 55m (355 min).
+- **Duration formatting:** Always use `formatDuration(minutes)` from `src/utils/durationPicker.ts` for displaying stat values. Output: `"25m"` / `"1h"` / `"1h 20m"`.
 - **Screen time:** Optional — app fully functional without `USAGE_STATS_ENABLED`. Never penalise mood if disabled.
 - **Pet never dies** — only reaches `sick` state. Always recoverable.
 
