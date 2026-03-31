@@ -1,10 +1,11 @@
 import { useFocusEffect, useNavigation } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Modal, Pressable, ScrollView, StyleSheet, View } from "react-native";
+import { Modal, Pressable, ScrollView, StyleSheet, Switch, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { CircularCountdown } from "@/components/circular-countdown";
 import { CircularSlider } from "@/components/circular-slider";
+import { DurationPicker } from "@/components/duration-picker";
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
 import { useColorScheme } from "@/hooks/use-color-scheme";
@@ -32,6 +33,7 @@ export default function FocusScreen() {
 
   // Setup state
   const [duration, setDuration] = useState(25);
+  const [manualMode, setManualMode] = useState(false);
   const [petEmoji, setPetEmoji] = useState("🥚");
   const [petName, setPetName] = useState("Pochi");
   const [recentDurations, setRecentDurations] = useState<number[]>([]);
@@ -47,16 +49,23 @@ export default function FocusScreen() {
   const sessionActive = sessionState === "active";
 
   const loadData = useCallback(async () => {
-    const [name, totalSessions, recents] = await Promise.all([
+    const [name, totalSessions, recents, manualModeStored] = await Promise.all([
       getItem<string>(STORAGE_KEYS.PET_NAME),
       getItem<number>(STORAGE_KEYS.TOTAL_SESSIONS_EVER),
       getItem<number[]>(STORAGE_KEYS.RECENT_DURATIONS),
+      getItem<boolean>(STORAGE_KEYS.MANUAL_DURATION_MODE),
     ]);
     const stage = getEvolutionStage(totalSessions ?? 0);
     setPetEmoji(EVOLUTION_CONFIG[stage].emoji);
     setPetName(name ?? "Pochi");
     setRecentDurations(recents ?? []);
+    setManualMode(manualModeStored ?? false);
   }, []);
+
+  async function handleManualModeToggle(value: boolean) {
+    setManualMode(value);
+    await setItem(STORAGE_KEYS.MANUAL_DURATION_MODE, value);
+  }
 
   useFocusEffect(
     useCallback(() => {
@@ -211,8 +220,26 @@ export default function FocusScreen() {
           >
             <ThemedText style={styles.title}>Time with {petName}</ThemedText>
 
-            <View style={styles.sliderWrapper}>
-              <CircularSlider value={duration} onChange={setDuration} />
+            {/* Mode toggle */}
+            <View style={styles.modeToggleRow}>
+              <ThemedText style={[styles.modeLabel, { color: textMuted }]}>
+                Manual
+              </ThemedText>
+              <Switch
+                value={manualMode}
+                onValueChange={handleManualModeToggle}
+                trackColor={{ false: PetBloomColors.border, true: PetBloomColors.primary }}
+                thumbColor={PetBloomColors.white}
+              />
+            </View>
+
+            {/* Duration picker */}
+            <View style={styles.pickerWrapper}>
+              {manualMode ? (
+                <DurationPicker value={duration} onChange={setDuration} />
+              ) : (
+                <CircularSlider value={duration} onChange={setDuration} />
+              )}
             </View>
 
             {recentDurations.length > 0 && (
@@ -368,7 +395,17 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     alignSelf: "flex-start",
   },
-  sliderWrapper: {
+  modeToggleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    alignSelf: "flex-end",
+    gap: 8,
+  },
+  modeLabel: {
+    fontSize: 14,
+    fontWeight: "500",
+  },
+  pickerWrapper: {
     alignItems: "center",
   },
   presets: {
