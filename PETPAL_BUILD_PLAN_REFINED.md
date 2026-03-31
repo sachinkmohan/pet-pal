@@ -712,12 +712,12 @@ Sized for **45-60 minute development sessions**. Each chunk is a self-contained 
 - [x] Recent durations: last 3 unique saved session durations stored in `STORAGE_KEYS.RECENT_DURATIONS`; shown as quick-start chips on Focus screen (replaces static presets); tapping a chip starts the session immediately; chips hidden on fresh install
 
 **Session 12: Session Integration**
-- [ ] Wire session complete → increment sessionsToday + totalSessionsEver
-- [ ] Wire session complete → recalculate mood immediately
-- [ ] Wire session complete → check evolution milestone
-- [ ] Wire session complete → update streak data
-- [ ] Update Home screen stats after returning from session
-- [ ] Pet sad animation on failed session
+- [x] Wire session complete → increment sessionsToday + totalSessionsEver
+- [x] Wire session complete → recalculate mood immediately
+- [x] Wire session complete → check evolution milestone (home screen detects via useFocusEffect on return)
+- [x] Wire session complete → update streak data (`StreakService.ts` — pure `calculateStreak()` + `updateStreakAfterSession()` storage wiring; 8 TDD tests)
+- [x] Update Home screen stats after returning from session (useFocusEffect)
+- [ ] Pet sad animation on failed session (deferred — give-up is silent by design)
 
 **Session 13 (if needed): Edge Cases & Polish**
 - [ ] Handle app crash during session (check for incomplete session on app start)
@@ -820,11 +820,13 @@ Sized for **45-60 minute development sessions**. Each chunk is a self-contained 
 ### Phase 6 — Stats & Screen Time (2-3 sessions)
 
 **Session 20: Stats Screen**
-- [ ] Install react-native-chart-kit + react-native-svg
-- [ ] Build weekly bar chart component (7 days of focus time)
-- [ ] Build today's stats card (focus time + personal best)
-- [ ] Highlight personal best day in chart
-- [ ] Show weekly total and daily average
+- [x] react-native-svg already installed (used by circular components) — react-native-chart-kit skipped; custom View-based bar chart built instead (no new dependency)
+- [x] Build weekly bar chart (7 bars: last 6 from `WEEKLY_FOCUS_DATA` + today's `FOCUS_TIME_TODAY`)
+- [x] Build today's stats card (focus time + personal best)
+- [x] Highlight personal best day in chart (peak bar highlighted in streak orange)
+- [x] Show weekly total and daily average
+- [x] `StatsService.ts` — pure functions: `buildWeekBars`, `buildDayLabels`, `findPeakIndex`; 9 TDD tests
+- [x] `stats.tsx` wired with `useFocusEffect` to reload on screen focus
 
 **Session 21: UsageStats Integration (Optional)**
 - [ ] Create native module wrapper for UsageStats API (expo-modules-api)
