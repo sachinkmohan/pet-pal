@@ -32,7 +32,6 @@ export default function FocusScreen() {
 
   // Setup state
   const [duration, setDuration] = useState(25);
-  const [musicEnabled, setMusicEnabled] = useState(false);
   const [petEmoji, setPetEmoji] = useState("🥚");
   const [petName, setPetName] = useState("Pochi");
   const [recentDurations, setRecentDurations] = useState<number[]>([]);
@@ -82,7 +81,7 @@ export default function FocusScreen() {
       setSessionState(state);
       if (state === "completed") {
         // Don't save yet — wait for user to confirm or deny
-        cancelSessionNotification();
+        // Notification intentionally left in tray — user dismisses manually
         setCompletedDuration(sessionDurationRef.current);
         setSessionComplete(true);
       }
@@ -167,7 +166,6 @@ export default function FocusScreen() {
 
   // Theme-aware colors
   const chipBg = isDark ? PetBloomColors.surfaceDark : PetBloomColors.primaryLight;
-  const toggleBg = isDark ? PetBloomColors.surfaceDark : PetBloomColors.surface;
   const textMuted = isDark
     ? PetBloomColors.textMutedDark
     : PetBloomColors.textMuted;
@@ -262,36 +260,6 @@ export default function FocusScreen() {
                 {petName} is waiting for you
               </ThemedText>
             </View>
-
-            <Pressable
-              style={[styles.musicRow, { backgroundColor: toggleBg }]}
-              onPress={() => setMusicEnabled((prev) => !prev)}
-            >
-              <ThemedText style={styles.musicIcon}>🌧️</ThemedText>
-              <View style={styles.musicLabelGroup}>
-                <ThemedText style={styles.musicLabel}>Rain sounds</ThemedText>
-                <ThemedText style={[styles.musicSub, { color: textMuted }]}>
-                  Plays during session
-                </ThemedText>
-              </View>
-              <View
-                style={[
-                  styles.togglePill,
-                  {
-                    backgroundColor: musicEnabled
-                      ? PetBloomColors.primary
-                      : PetBloomColors.border,
-                  },
-                ]}
-              >
-                <View
-                  style={[
-                    styles.toggleThumb,
-                    { transform: [{ translateX: musicEnabled ? 18 : 2 }] },
-                  ]}
-                />
-              </View>
-            </Pressable>
 
             <Pressable
               style={({ pressed }) => [
@@ -434,40 +402,6 @@ const styles = StyleSheet.create({
   petCaption: {
     fontSize: 14,
     fontStyle: "italic",
-  },
-  musicRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    width: "100%",
-    borderRadius: 16,
-    padding: 16,
-  },
-  musicIcon: {
-    fontSize: 28,
-  },
-  musicLabelGroup: {
-    flex: 1,
-    gap: 2,
-  },
-  musicLabel: {
-    fontSize: 15,
-    fontWeight: "600",
-  },
-  musicSub: {
-    fontSize: 12,
-  },
-  togglePill: {
-    width: 44,
-    height: 26,
-    borderRadius: 13,
-    justifyContent: "center",
-  },
-  toggleThumb: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    backgroundColor: PetBloomColors.white,
   },
   startButton: {
     width: "100%",

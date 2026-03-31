@@ -127,17 +127,6 @@ export default function StatsScreen() {
             </View>
           </View>
 
-          {/* Screen time prompt */}
-          <View style={[styles.card, styles.promptCard, { backgroundColor: surface }]}>
-            <ThemedText style={styles.promptIcon}>📱</ThemedText>
-            <ThemedText style={styles.promptTitle}>Screen time tracking</ThemedText>
-            <ThemedText style={[styles.promptSub, { color: textMuted }]}>
-              Let {'{name}'} react to how much you use your phone
-            </ThemedText>
-            <View style={styles.enableButton}>
-              <ThemedText style={styles.enableText}>Coming soon</ThemedText>
-            </View>
-          </View>
         </ScrollView>
       </ThemedView>
     </SafeAreaView>
@@ -238,32 +227,5 @@ const styles = StyleSheet.create({
   },
   weekLabel: {
     fontSize: 12,
-  },
-  promptCard: {
-    alignItems: 'center',
-    gap: 8,
-  },
-  promptIcon: {
-    fontSize: 32,
-  },
-  promptTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  promptSub: {
-    fontSize: 13,
-    textAlign: 'center',
-  },
-  enableButton: {
-    marginTop: 4,
-    paddingHorizontal: 24,
-    paddingVertical: 10,
-    borderRadius: 12,
-    backgroundColor: PetBloomColors.surface,
-  },
-  enableText: {
-    fontSize: 14,
-    fontWeight: '600',
-    opacity: 0.4,
   },
 });
