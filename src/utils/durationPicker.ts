@@ -11,6 +11,13 @@ export function HHMMToMinutes(hours: number, mins: number): number {
   return hours * 60 + mins;
 }
 
+export function formatDuration(totalMinutes: number): string {
+  const { hours, mins } = minutesToHHMM(totalMinutes);
+  if (hours === 0) return `${mins}m`;
+  if (mins === 0) return `${hours}h`;
+  return `${hours}h ${mins}m`;
+}
+
 export function clampDuration(minutes: number): number {
   return Math.min(Math.max(minutes, DURATION_MIN), DURATION_MAX);
 }

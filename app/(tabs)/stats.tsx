@@ -8,6 +8,7 @@ import { ThemedView } from '@/components/themed-view';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { PetBloomColors } from '@/src/constants/Colors';
 import { buildDayLabels, buildWeekBars, findPeakIndex } from '@/src/services/StatsService';
+import { formatDuration } from '@/src/utils/durationPicker';
 import { getItem } from '@/src/storage/AppStorage';
 import { STORAGE_KEYS } from '@/src/storage/keys';
 
@@ -54,7 +55,7 @@ export default function StatsScreen() {
             <View style={styles.todayRow}>
               <View style={styles.todayStat}>
                 <ThemedText style={[styles.todayValue, { color: PetBloomColors.focusBar }]}>
-                  {focusTimeToday}m
+                  {formatDuration(focusTimeToday)}
                 </ThemedText>
                 <ThemedText style={[styles.todayLabel, { color: textMuted }]}>
                   Screen Away Time
@@ -63,7 +64,7 @@ export default function StatsScreen() {
               <View style={[styles.divider, { backgroundColor: dividerColor }]} />
               <View style={styles.todayStat}>
                 <ThemedText style={[styles.todayValue, { color: PetBloomColors.thriving }]}>
-                  🏆 {personalBest}m
+                  🏆 {formatDuration(personalBest)}
                 </ThemedText>
                 <ThemedText style={[styles.todayLabel, { color: textMuted }]}>
                   Personal best
@@ -112,14 +113,14 @@ export default function StatsScreen() {
             <View style={styles.weekSummary}>
               <View style={styles.weekStat}>
                 <ThemedText style={[styles.weekValue, { color: PetBloomColors.focusBar }]}>
-                  {weeklyTotal}m
+                  {formatDuration(weeklyTotal)}
                 </ThemedText>
                 <ThemedText style={[styles.weekLabel, { color: textMuted }]}>
                   Weekly total
                 </ThemedText>
               </View>
               <View style={styles.weekStat}>
-                <ThemedText style={styles.weekValue}>{dailyAvg}m</ThemedText>
+                <ThemedText style={styles.weekValue}>{formatDuration(dailyAvg)}</ThemedText>
                 <ThemedText style={[styles.weekLabel, { color: textMuted }]}>
                   Daily avg
                 </ThemedText>

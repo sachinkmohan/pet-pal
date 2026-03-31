@@ -1,4 +1,4 @@
-import { minutesToHHMM, HHMMToMinutes, clampDuration } from '../durationPicker';
+import { minutesToHHMM, HHMMToMinutes, clampDuration, formatDuration } from '../durationPicker';
 
 const MAX = 355; // 5h 55m
 const MIN = 1;
@@ -40,6 +40,36 @@ describe('HHMMToMinutes', () => {
 
   test('0h 25m → 25 min', () => {
     expect(HHMMToMinutes(0, 25)).toBe(25);
+  });
+});
+
+describe('formatDuration', () => {
+  test('under 60 min shows only minutes', () => {
+    expect(formatDuration(25)).toBe('25m');
+  });
+
+  test('0 min → "0m"', () => {
+    expect(formatDuration(0)).toBe('0m');
+  });
+
+  test('exactly 60 min → "1h"', () => {
+    expect(formatDuration(60)).toBe('1h');
+  });
+
+  test('80 min → "1h 20m"', () => {
+    expect(formatDuration(80)).toBe('1h 20m');
+  });
+
+  test('90 min → "1h 30m"', () => {
+    expect(formatDuration(90)).toBe('1h 30m');
+  });
+
+  test('120 min → "2h"', () => {
+    expect(formatDuration(120)).toBe('2h');
+  });
+
+  test('355 min → "5h 55m"', () => {
+    expect(formatDuration(355)).toBe('5h 55m');
   });
 });
 

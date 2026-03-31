@@ -25,6 +25,7 @@ import {
   getEvolutionStage,
 } from "@/src/constants/PetStates";
 import { FEED_COOLDOWN_MS, calculateMood } from "@/src/services/MoodService";
+import { formatDuration } from "@/src/utils/durationPicker";
 import { getItem, setItem } from "@/src/storage/AppStorage";
 import { STORAGE_KEYS } from "@/src/storage/keys";
 
@@ -271,7 +272,7 @@ export default function HomeScreen() {
               <ThemedText
                 style={[styles.statValue, { color: PetBloomColors.focusBar }]}
               >
-                {focusTimeToday}m
+                {formatDuration(focusTimeToday)}
               </ThemedText>
               <ThemedText style={[styles.statLabel, { color: textMuted }]}>
                 Screen Away Time
@@ -289,7 +290,7 @@ export default function HomeScreen() {
               <ThemedText
                 style={[styles.statValue, { color: PetBloomColors.thriving }]}
               >
-                {personalBest}m
+                {formatDuration(personalBest)}
               </ThemedText>
               <ThemedText style={[styles.statLabel, { color: textMuted }]}>
                 Personal best
