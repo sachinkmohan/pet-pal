@@ -11,5 +11,8 @@
       "distribution": "internal"
     },
     "production": {}
+  },
+  "submit": {
+    "production": {}
   }
 }

@@ -2,7 +2,7 @@
   "expo": {
     "name": "PetBloom",
     "slug": "petbloom",
-    "version": "1.1.0",
+    "version": "1.1.1",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "petbloom",
@@ -24,7 +24,8 @@
         "android.permission.POST_NOTIFICATIONS",
         "android.permission.VIBRATE"
       ],
-      "package": "com.petbloom.app"
+      "package": "com.petbloom.app",
+      "versionCode": 2
     },
     "web": {
       "output": "static",
