@@ -35,10 +35,11 @@ export async function showSessionNotification(
 
   await cancelSessionNotification();
 
+  const durationMins = Math.round(durationSeconds / 60);
   activeNotificationId = await Notifications.scheduleNotificationAsync({
     content: {
       title: `${petName} is waiting... 🐣`,
-      body: `Session ends at ${formatEndTime(durationSeconds, now)} — stay focused!`,
+      body: `${durationMins} min · Ends at ${formatEndTime(durationSeconds, now)}`,
       sticky: true,
       autoDismiss: false,
       data: { type: 'session_running' },

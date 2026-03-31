@@ -1,10 +1,11 @@
 import { useFocusEffect, useNavigation } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Modal, Pressable, ScrollView, StyleSheet, View } from "react-native";
+import { Modal, Pressable, ScrollView, StyleSheet, Switch, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { CircularCountdown } from "@/components/circular-countdown";
 import { CircularSlider } from "@/components/circular-slider";
+import { DurationPicker } from "@/components/duration-picker";
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
 import { useColorScheme } from "@/hooks/use-color-scheme";
@@ -22,6 +23,7 @@ import {
 } from "@/src/services/NotificationService";
 import { getItem, setItem } from "@/src/storage/AppStorage";
 import { STORAGE_KEYS } from "@/src/storage/keys";
+import { updateStreakAfterSession } from "@/src/services/StreakService";
 import { addRecentDuration } from "@/src/storage/recentDurations";
 import { resetDailyDataIfNeeded } from "@/src/storage/seedData";
 
@@ -31,7 +33,7 @@ export default function FocusScreen() {
 
   // Setup state
   const [duration, setDuration] = useState(25);
-  const [musicEnabled, setMusicEnabled] = useState(false);
+  const [manualMode, setManualMode] = useState(false);
   const [petEmoji, setPetEmoji] = useState("🥚");
   const [petName, setPetName] = useState("Pochi");
   const [recentDurations, setRecentDurations] = useState<number[]>([]);
@@ -47,16 +49,23 @@ export default function FocusScreen() {
   const sessionActive = sessionState === "active";
 
   const loadData = useCallback(async () => {
-    const [name, totalSessions, recents] = await Promise.all([
+    const [name, totalSessions, recents, manualModeStored] = await Promise.all([
       getItem<string>(STORAGE_KEYS.PET_NAME),
       getItem<number>(STORAGE_KEYS.TOTAL_SESSIONS_EVER),
       getItem<number[]>(STORAGE_KEYS.RECENT_DURATIONS),
+      getItem<boolean>(STORAGE_KEYS.MANUAL_DURATION_MODE),
     ]);
     const stage = getEvolutionStage(totalSessions ?? 0);
     setPetEmoji(EVOLUTION_CONFIG[stage].emoji);
     setPetName(name ?? "Pochi");
     setRecentDurations(recents ?? []);
+    setManualMode(manualModeStored ?? false);
   }, []);
+
+  async function handleManualModeToggle(value: boolean) {
+    setManualMode(value);
+    await setItem(STORAGE_KEYS.MANUAL_DURATION_MODE, value);
+  }
 
   useFocusEffect(
     useCallback(() => {
@@ -81,7 +90,7 @@ export default function FocusScreen() {
       setSessionState(state);
       if (state === "completed") {
         // Don't save yet — wait for user to confirm or deny
-        cancelSessionNotification();
+        // Notification intentionally left in tray — user dismisses manually
         setCompletedDuration(sessionDurationRef.current);
         setSessionComplete(true);
       }
@@ -146,6 +155,8 @@ export default function FocusScreen() {
       screenTimeEnabled: statsEnabled ?? false,
     });
 
+    await updateStreakAfterSession();
+
     const stage = getEvolutionStage(newTotal);
     setPetEmoji(EVOLUTION_CONFIG[stage].emoji);
   }
@@ -164,7 +175,6 @@ export default function FocusScreen() {
 
   // Theme-aware colors
   const chipBg = isDark ? PetBloomColors.surfaceDark : PetBloomColors.primaryLight;
-  const toggleBg = isDark ? PetBloomColors.surfaceDark : PetBloomColors.surface;
   const textMuted = isDark
     ? PetBloomColors.textMutedDark
     : PetBloomColors.textMuted;
@@ -210,8 +220,26 @@ export default function FocusScreen() {
           >
             <ThemedText style={styles.title}>Time with {petName}</ThemedText>
 
-            <View style={styles.sliderWrapper}>
-              <CircularSlider value={duration} onChange={setDuration} />
+            {/* Mode toggle */}
+            <View style={styles.modeToggleRow}>
+              <ThemedText style={[styles.modeLabel, { color: textMuted }]}>
+                Manual
+              </ThemedText>
+              <Switch
+                value={manualMode}
+                onValueChange={handleManualModeToggle}
+                trackColor={{ false: PetBloomColors.border, true: PetBloomColors.primary }}
+                thumbColor={PetBloomColors.white}
+              />
+            </View>
+
+            {/* Duration picker */}
+            <View style={styles.pickerWrapper}>
+              {manualMode ? (
+                <DurationPicker value={duration} onChange={setDuration} />
+              ) : (
+                <CircularSlider value={duration} onChange={setDuration} />
+              )}
             </View>
 
             {recentDurations.length > 0 && (
@@ -259,36 +287,6 @@ export default function FocusScreen() {
                 {petName} is waiting for you
               </ThemedText>
             </View>
-
-            <Pressable
-              style={[styles.musicRow, { backgroundColor: toggleBg }]}
-              onPress={() => setMusicEnabled((prev) => !prev)}
-            >
-              <ThemedText style={styles.musicIcon}>🌧️</ThemedText>
-              <View style={styles.musicLabelGroup}>
-                <ThemedText style={styles.musicLabel}>Rain sounds</ThemedText>
-                <ThemedText style={[styles.musicSub, { color: textMuted }]}>
-                  Plays during session
-                </ThemedText>
-              </View>
-              <View
-                style={[
-                  styles.togglePill,
-                  {
-                    backgroundColor: musicEnabled
-                      ? PetBloomColors.primary
-                      : PetBloomColors.border,
-                  },
-                ]}
-              >
-                <View
-                  style={[
-                    styles.toggleThumb,
-                    { transform: [{ translateX: musicEnabled ? 18 : 2 }] },
-                  ]}
-                />
-              </View>
-            </Pressable>
 
             <Pressable
               style={({ pressed }) => [
@@ -397,7 +395,17 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     alignSelf: "flex-start",
   },
-  sliderWrapper: {
+  modeToggleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    alignSelf: "flex-end",
+    gap: 8,
+  },
+  modeLabel: {
+    fontSize: 14,
+    fontWeight: "500",
+  },
+  pickerWrapper: {
     alignItems: "center",
   },
   presets: {
@@ -431,40 +439,6 @@ const styles = StyleSheet.create({
   petCaption: {
     fontSize: 14,
     fontStyle: "italic",
-  },
-  musicRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    width: "100%",
-    borderRadius: 16,
-    padding: 16,
-  },
-  musicIcon: {
-    fontSize: 28,
-  },
-  musicLabelGroup: {
-    flex: 1,
-    gap: 2,
-  },
-  musicLabel: {
-    fontSize: 15,
-    fontWeight: "600",
-  },
-  musicSub: {
-    fontSize: 12,
-  },
-  togglePill: {
-    width: 44,
-    height: 26,
-    borderRadius: 13,
-    justifyContent: "center",
-  },
-  toggleThumb: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    backgroundColor: PetBloomColors.white,
   },
   startButton: {
     width: "100%",

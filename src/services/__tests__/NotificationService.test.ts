@@ -47,6 +47,13 @@ describe('showSessionNotification', () => {
     expect(request.content.body).toMatch(/\d+:\d{2} (AM|PM)/);
   });
 
+  test('body contains the duration in minutes', async () => {
+    // 1500 seconds = 25 minutes
+    await showSessionNotification('Pochi', 1500);
+    const [request] = mockSchedule.mock.calls[0];
+    expect(request.content.body).toContain('25 min');
+  });
+
   test('does nothing if permission is denied', async () => {
     mockPermissions.mockResolvedValue({ status: 'denied' });
     await showSessionNotification('Pochi', 1500);

@@ -1,178 +1,232 @@
-import { StyleSheet, View } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { useFocusEffect } from 'expo-router';
+import { useCallback, useState } from 'react';
+import { ScrollView, StyleSheet, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { ThemedText } from "@/components/themed-text";
-import { ThemedView } from "@/components/themed-view";
-
-const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+import { ThemedText } from '@/components/themed-text';
+import { ThemedView } from '@/components/themed-view';
+import { useColorScheme } from '@/hooks/use-color-scheme';
+import { PetBloomColors } from '@/src/constants/Colors';
+import { buildDayLabels, buildWeekBars, findPeakIndex } from '@/src/services/StatsService';
+import { formatDuration } from '@/src/utils/durationPicker';
+import { getItem } from '@/src/storage/AppStorage';
+import { STORAGE_KEYS } from '@/src/storage/keys';
 
 export default function StatsScreen() {
+  const isDark = useColorScheme() === 'dark';
+
+  const [focusTimeToday, setFocusTimeToday] = useState(0);
+  const [personalBest, setPersonalBest] = useState(0);
+  const [weeklyData, setWeeklyData] = useState<number[]>([]);
+
+  const surface = isDark ? PetBloomColors.surfaceDark : PetBloomColors.surface;
+  const textMuted = isDark ? PetBloomColors.textMutedDark : PetBloomColors.textMuted;
+  const dividerColor = isDark ? PetBloomColors.borderDark : PetBloomColors.border;
+
+  const loadData = useCallback(async () => {
+    const [focusTime, pb, weekly] = await Promise.all([
+      getItem<number>(STORAGE_KEYS.FOCUS_TIME_TODAY),
+      getItem<number>(STORAGE_KEYS.PERSONAL_BEST),
+      getItem<number[]>(STORAGE_KEYS.WEEKLY_FOCUS_DATA),
+    ]);
+    setFocusTimeToday(focusTime ?? 0);
+    setPersonalBest(pb ?? 0);
+    setWeeklyData(weekly ?? []);
+  }, []);
+
+  useFocusEffect(useCallback(() => { loadData(); }, [loadData]));
+
+  const bars = buildWeekBars(weeklyData, focusTimeToday);
+  const labels = buildDayLabels(new Date());
+  const peakIndex = findPeakIndex(bars);
+  const maxBar = Math.max(...bars, 1); // avoid divide-by-zero
+  const weeklyTotal = bars.reduce((a, b) => a + b, 0);
+  const dailyAvg = Math.round(weeklyTotal / 7);
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <ThemedView style={styles.container}>
-        <ThemedText style={styles.title}>📊 Stats</ThemedText>
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
+          <ThemedText style={styles.title}>Stats</ThemedText>
 
-        <View style={styles.todayCard}>
-          <ThemedText style={styles.cardTitle}>Today</ThemedText>
-          <View style={styles.todayRow}>
-            <View style={styles.todayStat}>
-              <ThemedText style={styles.todayValue}>0m</ThemedText>
-              <ThemedText style={styles.todayLabel}>
-                Screen Away Time
-              </ThemedText>
-            </View>
-            <View style={styles.divider} />
-            <View style={styles.todayStat}>
-              <ThemedText style={styles.todayValue}>🏆 0m</ThemedText>
-              <ThemedText style={styles.todayLabel}>Personal best</ThemedText>
-            </View>
-          </View>
-        </View>
-
-        <View style={styles.chartCard}>
-          <ThemedText style={styles.cardTitle}>This week</ThemedText>
-          <View style={styles.chart}>
-            {DAYS.map((day) => (
-              <View key={day} style={styles.bar}>
-                <View style={styles.barFill} />
-                <ThemedText style={styles.barLabel}>{day}</ThemedText>
+          {/* Today card */}
+          <View style={[styles.card, { backgroundColor: surface }]}>
+            <ThemedText style={[styles.cardLabel, { color: textMuted }]}>Today</ThemedText>
+            <View style={styles.todayRow}>
+              <View style={styles.todayStat}>
+                <ThemedText style={[styles.todayValue, { color: PetBloomColors.focusBar }]}>
+                  {formatDuration(focusTimeToday)}
+                </ThemedText>
+                <ThemedText style={[styles.todayLabel, { color: textMuted }]}>
+                  Screen Away Time
+                </ThemedText>
               </View>
-            ))}
+              <View style={[styles.divider, { backgroundColor: dividerColor }]} />
+              <View style={styles.todayStat}>
+                <ThemedText style={[styles.todayValue, { color: PetBloomColors.thriving }]}>
+                  🏆 {formatDuration(personalBest)}
+                </ThemedText>
+                <ThemedText style={[styles.todayLabel, { color: textMuted }]}>
+                  Personal best
+                </ThemedText>
+              </View>
+            </View>
           </View>
-          <View style={styles.weekSummary}>
-            <ThemedText style={styles.weekStat}>Total: 0m</ThemedText>
-            <ThemedText style={styles.weekStat}>Daily avg: 0m</ThemedText>
-          </View>
-        </View>
 
-        <View style={styles.screenTimePrompt}>
-          <ThemedText style={styles.promptText}>
-            📱 Enable screen time tracking
-          </ThemedText>
-          <ThemedText style={styles.promptSub}>
-            Let Pochi react to how much you use your phone
-          </ThemedText>
-          <View style={styles.enableButton}>
-            <ThemedText style={styles.enableText}>Enable</ThemedText>
+          {/* Weekly chart */}
+          <View style={[styles.card, { backgroundColor: surface }]}>
+            <ThemedText style={[styles.cardLabel, { color: textMuted }]}>This week</ThemedText>
+            <View style={styles.chart}>
+              {bars.map((val, i) => {
+                const isPeak = i === peakIndex;
+                const heightPct = val / maxBar;
+                return (
+                  <View key={i} style={styles.barCol}>
+                    <View style={styles.barTrack}>
+                      <View
+                        style={[
+                          styles.barFill,
+                          {
+                            height: `${Math.max(heightPct * 100, val > 0 ? 4 : 0)}%`,
+                            backgroundColor: isPeak
+                              ? PetBloomColors.streak
+                              : PetBloomColors.focusBar,
+                            opacity: isPeak ? 1 : 0.55,
+                          },
+                        ]}
+                      />
+                    </View>
+                    <ThemedText
+                      style={[
+                        styles.barLabel,
+                        { color: isPeak ? PetBloomColors.streak : textMuted },
+                        isPeak && styles.barLabelPeak,
+                      ]}
+                    >
+                      {labels[i]}
+                    </ThemedText>
+                  </View>
+                );
+              })}
+            </View>
+            <View style={[styles.chartDivider, { backgroundColor: dividerColor }]} />
+            <View style={styles.weekSummary}>
+              <View style={styles.weekStat}>
+                <ThemedText style={[styles.weekValue, { color: PetBloomColors.focusBar }]}>
+                  {formatDuration(weeklyTotal)}
+                </ThemedText>
+                <ThemedText style={[styles.weekLabel, { color: textMuted }]}>
+                  Weekly total
+                </ThemedText>
+              </View>
+              <View style={styles.weekStat}>
+                <ThemedText style={styles.weekValue}>{formatDuration(dailyAvg)}</ThemedText>
+                <ThemedText style={[styles.weekLabel, { color: textMuted }]}>
+                  Daily avg
+                </ThemedText>
+              </View>
+            </View>
           </View>
-        </View>
+
+        </ScrollView>
       </ThemedView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-  },
-  container: {
-    flex: 1,
+  safeArea: { flex: 1 },
+  container: { flex: 1 },
+  scroll: {
     paddingHorizontal: 24,
-    paddingTop: 24,
-    gap: 20,
+    paddingTop: 16,
+    paddingBottom: 32,
+    gap: 16,
   },
   title: {
     fontSize: 28,
-    fontWeight: "700",
+    fontWeight: '700',
+    marginBottom: 4,
   },
-  todayCard: {
-    borderRadius: 16,
+  card: {
+    borderRadius: 20,
     padding: 20,
-    backgroundColor: "rgba(0,0,0,0.05)",
-    gap: 12,
+    gap: 14,
   },
-  cardTitle: {
-    fontSize: 14,
-    fontWeight: "600",
-    opacity: 0.6,
-    textTransform: "uppercase",
-    letterSpacing: 1,
+  cardLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
   },
   todayRow: {
-    flexDirection: "row",
-    alignItems: "center",
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   todayStat: {
     flex: 1,
-    alignItems: "center",
+    alignItems: 'center',
     gap: 4,
   },
   todayValue: {
     fontSize: 28,
-    fontWeight: "700",
+    fontWeight: '700',
   },
   todayLabel: {
-    fontSize: 13,
-    opacity: 0.6,
+    fontSize: 12,
+    textAlign: 'center',
   },
   divider: {
     width: 1,
     height: 48,
-    backgroundColor: "rgba(0,0,0,0.1)",
-  },
-  chartCard: {
-    borderRadius: 16,
-    padding: 20,
-    backgroundColor: "rgba(0,0,0,0.05)",
-    gap: 16,
   },
   chart: {
-    flexDirection: "row",
-    alignItems: "flex-end",
-    height: 100,
-    gap: 8,
-  },
-  bar: {
-    flex: 1,
-    alignItems: "center",
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    height: 110,
     gap: 4,
-    height: "100%",
-    justifyContent: "flex-end",
+  },
+  barCol: {
+    flex: 1,
+    alignItems: 'center',
+    gap: 6,
+    height: '100%',
+    justifyContent: 'flex-end',
+  },
+  barTrack: {
+    flex: 1,
+    width: '100%',
+    justifyContent: 'flex-end',
   },
   barFill: {
-    width: "100%",
-    height: 4,
+    width: '100%',
     borderRadius: 4,
-    backgroundColor: "#0a7ea4",
-    opacity: 0.3,
+    minHeight: 0,
   },
   barLabel: {
-    fontSize: 11,
-    opacity: 0.6,
+    fontSize: 10,
+    fontWeight: '500',
+  },
+  barLabelPeak: {
+    fontWeight: '700',
+  },
+  chartDivider: {
+    height: 1,
+    marginHorizontal: -4,
   },
   weekSummary: {
-    flexDirection: "row",
-    justifyContent: "space-between",
+    flexDirection: 'row',
   },
   weekStat: {
-    fontSize: 14,
-    opacity: 0.7,
+    flex: 1,
+    alignItems: 'center',
+    gap: 2,
   },
-  screenTimePrompt: {
-    borderRadius: 16,
-    padding: 20,
-    backgroundColor: "rgba(0,0,0,0.05)",
-    gap: 6,
-    alignItems: "center",
+  weekValue: {
+    fontSize: 20,
+    fontWeight: '700',
   },
-  promptText: {
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  promptSub: {
-    fontSize: 13,
-    opacity: 0.6,
-    textAlign: "center",
-  },
-  enableButton: {
-    marginTop: 8,
-    paddingHorizontal: 24,
-    paddingVertical: 10,
-    borderRadius: 12,
-    backgroundColor: "#0a7ea4",
-  },
-  enableText: {
-    color: "#fff",
-    fontWeight: "600",
+  weekLabel: {
+    fontSize: 12,
   },
 });

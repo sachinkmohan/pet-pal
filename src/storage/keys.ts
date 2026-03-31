@@ -30,7 +30,8 @@ export const STORAGE_KEYS = {
   WEEKLY_FOCUS_DATA: 'weeklyFocusData', // JSON array of last 7 days (minutes)
 
   // Focus screen
-  RECENT_DURATIONS: 'recentDurations', // number[] of last 3 unique saved session durations (minutes)
+  RECENT_DURATIONS: 'recentDurations', // number[] of last 5 unique saved session durations (minutes)
+  MANUAL_DURATION_MODE: 'manualDurationMode', // boolean — true when HH:MM flip picker is active
 } as const;
 
 export type StorageKey = (typeof STORAGE_KEYS)[keyof typeof STORAGE_KEYS];
