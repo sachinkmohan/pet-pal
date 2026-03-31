@@ -1,4 +1,4 @@
-import { minutesToHHMM, HHMMToMinutes, clampDuration, formatDuration } from '../durationPicker';
+import { minutesToHHMM, HHMMToMinutes, clampDuration, formatDuration } from '@/src/utils/durationPicker';
 
 const MAX = 355; // 5h 55m
 const MIN = 1;

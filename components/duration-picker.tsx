@@ -24,13 +24,14 @@ export function DurationPicker({ value, onChange }: Props) {
   const hourRef = useRef<ScrollView>(null);
   const minRef = useRef<ScrollView>(null);
 
-  // Scroll to initial position on mount
+  // Scroll to position whenever hours/mins change (covers mount + external value updates)
   useEffect(() => {
-    setTimeout(() => {
+    const t = setTimeout(() => {
       hourRef.current?.scrollTo({ y: hours * ITEM_HEIGHT, animated: false });
       minRef.current?.scrollTo({ y: mins * ITEM_HEIGHT, animated: false });
     }, 50);
-  }, []);
+    return () => clearTimeout(t);
+  }, [hours, mins]);
 
   function snapIndex(offsetY: number, max: number): number {
     return Math.min(Math.max(Math.round(offsetY / ITEM_HEIGHT), 0), max);

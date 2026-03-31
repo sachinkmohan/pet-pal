@@ -69,7 +69,7 @@ export async function updateStreakAfterSession(): Promise<void> {
   const result = calculateStreak({
     sessionsToday: sessionsToday ?? 0,
     lastFedTime: lastFedTime ?? null,
-    lastStreakDate: lastStreakDate ?? null,
+    lastStreakDate: lastStreakDate || null,
     currentStreak: currentStreak ?? 0,
     longestStreak: longestStreak ?? 0,
     now: Date.now(),
