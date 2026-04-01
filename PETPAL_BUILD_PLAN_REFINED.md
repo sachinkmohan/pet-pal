@@ -52,6 +52,8 @@ Changes from the original plan, with rationale:
 | First-feed experience | Fish shown immediately | **Egg hatches into fish on first feed** | One-time delight moment — egg wiggles on each tap, cracks and reveals fish with spring animation |
 | Feed haptics | `notificationAsync(Warning)` per tap, `notificationAsync(Success)` on completion | **`notificationAsync(Error)` for all** | Error pattern produces the strongest vibration via this API |
 | Duration input | Circular slider only | **Circular slider + optional HH:MM drum picker behind a `Manual` toggle** | User can set precise durations up to 5h 55m; toggle state persisted so mode is remembered between sessions |
+| Quest currency | Abstract XP reward | **Coins 🪙 (soft currency, +50 per quest)** | Coins are tangible and spendable in a future shop; XP stays as a pure evolution counter. Gems 💎 (hard/premium currency) deferred until IAP is wired — wrong shape to define early |
+| Quest tab placement | Quest card on Home screen | **Dedicated Quests tab (position 2: Home · Quests · Step Away · Stats · Journey)** | Gives quests their own destination; users who want to check/claim have a clear place to go |
 | Recent durations cap | 3 entries | **5 entries** | More history visible on screen without cluttering; Quick-start chips benefit from longer recall |
 | Session notification body | `"Session ends at X:XX PM — stay focused!"` | **`"25 min · Ends at 2:30 PM"` — duration included; stays in tray after session completes** | User requested duration visible in notification; persistent notification avoids "why did this disappear?" confusion |
 | Stats duration display | Raw minutes (`80m`) | **Formatted (`1h 20m`)** | More readable for longer sessions; `formatDuration()` utility shared across all stat displays |
@@ -93,6 +95,8 @@ PetPal is a **virtual pet + focus app** for Android. Your pet Pochi's mood and g
 - [ ] Stats screen (daily + weekly chart)
 - [ ] Pet evolution path (Egg → Legendary)
 - [ ] Progress/Journey screen (evolution timeline)
+- [x] Daily quest system (1 quest/day, 5 types, resets at midnight)
+- [x] Coins 🪙 — soft currency earned from quests
 
 ---
 
@@ -864,6 +868,47 @@ Sized for **45-60 minute development sessions**. Each chunk is a self-contained 
 
 ---
 
+---
+
+### Unplanned — Daily Quest System (PET-12, TDD, 27 tests)
+
+Built between Phase 6 and Phase 7. See `docs/quest-system.md` for full design detail.
+
+**QuestService.ts (pure logic — 27 TDD tests)**
+- [x] 5 quest types: `early_bird`, `long_sit`, `quality_time`, `consistency`, `care_package`
+- [x] `selectTodaysQuest(dayIndex)` — deterministic via `dayIndex % 5`; same quest all day, never repeats two days in a row
+- [x] `evaluateProgress(state, event, def)` — immutable update; handles count / minutes / bit-flag progress modes
+- [x] `care_package` uses bit flags (bit 0 = fed, bit 1 = session done; value 3 = both done) — order-independent
+- [x] `isQuestComplete`, `isQuestStale`, `createFreshQuestState` — pure helpers
+- [x] `getTodayDateString()` — YYYY-MM-DD in local time (consistent with streak date convention)
+
+**QuestStorage.ts (storage wiring)**
+- [x] `loadOrInitQuestState()` — reads `DAILY_QUEST` from AsyncStorage; resets if stale date
+- [x] `recordQuestEvent(event)` — called after session save and feed complete; no-op if already claimed
+- [x] `claimQuestReward()` — awards +50 🪙 coins, marks `claimed: true`; guards against double-award
+- [x] `getCoins()` — returns current balance (0 if unset)
+
+**Storage keys added**
+- [x] `DAILY_QUEST` — `DailyQuestState` JSON: `{ date, questId, completed, claimed, progress }`
+- [x] `COINS` — number; running coin balance
+
+**Hooks into existing flows**
+- [x] `app/(tabs)/focus.tsx` — `recordQuestEvent({ type: 'session', durationMinutes, startedAt })` called after `updateStreakAfterSession()`
+- [x] `app/feed.tsx` — `recordQuestEvent({ type: 'feed' })` called on 3rd tap completion
+
+**Quests tab screen (`app/(tabs)/quests.tsx`)**
+- [x] New tab added at position 2 — `star.fill` icon; order: Home · Quests · Step Away · Stats · Journey
+- [x] Quest card: emoji icon, name, description, progress bar (X/target), reward badge (🪙 +50)
+- [x] **Claim!** green button when complete + not claimed; grey arrow when in progress; green ✓ when claimed
+- [x] Floating coin animation (+50 🪙 floats up and fades) on claim
+- [x] Countdown timer showing time until midnight reset
+- [x] Coin balance displayed in header (🪙 N amber badge)
+
+**Home screen update**
+- [x] Coin balance shown next to streak badge (🪙 N in amber badge); reloads on focus
+
+---
+
 ### Phase 7 — Polish & Ship (3-4 sessions)
 
 **Session 23: Visual Polish**
@@ -905,9 +950,10 @@ Sized for **45-60 minute development sessions**. Each chunk is a self-contained 
 | 4. Feed Mechanic | 2-3 | Tap to feed, cooldown, haptics |
 | 5. Music & Notifications | 2-3 | Audio playback, push notifications |
 | 6. Stats & Screen Time | 2-3 | Charts, optional UsageStats |
+| — Quest System (unplanned) | 2 | Daily quests, coins, Quests tab |
 | 7. Polish & Ship | 3-4 | Testing, visuals, Play Store |
 
-**Total: ~22-26 sessions** (at 45-60 min each ≈ 4-6 weeks of consistent work)
+**Total: ~24-28 sessions** (at 45-60 min each ≈ 4-6 weeks of consistent work)
 
 ---
 
@@ -976,6 +1022,12 @@ These were intentionally cut or deferred from MVP:
 | Spine 2D / Live2D animations | Over-engineering visuals early |
 | Multiple pet types | Validate single pet first |
 | Pet accessories / cosmetics shop | Needs monetization infrastructure |
+| Gems 💎 (hard/premium currency) | Needs IAP or ad integration before storage shape is defined |
+| Quest streak bonus (7-day run → bonus coins) | Deferred to v2 |
+| Weekly mega-quest with bigger reward | Deferred to v2 |
+| Quest notifications ("Your quest is waiting!") | Deferred to v2 |
+| Expanded quest pool (9+ types) | 5 types sufficient for MVP rotation |
+| Coin shop (spend coins on cosmetics) | Needs shop screen + item catalogue |
 | Social sharing | Needs backend or deep link setup |
 | Additional music tracks (Forest, Lo-fi) | Gated as IAP in Phase 2 |
 | Multiplayer / friend comparisons | Needs backend |
