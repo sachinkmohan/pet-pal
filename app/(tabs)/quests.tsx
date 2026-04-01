@@ -30,7 +30,7 @@ function secondsUntilMidnight(): number {
   const now = new Date();
   const midnight = new Date(now);
   midnight.setHours(24, 0, 0, 0);
-  return Math.floor((midnight.getTime() - now.getTime()) / 1000);
+  return Math.max(0, Math.floor((midnight.getTime() - now.getTime()) / 1000));
 }
 
 function progressLabel(state: DailyQuestState, def: QuestDefinition): string {
@@ -112,7 +112,7 @@ export default function QuestsScreen() {
 
   const cardBg = isDark ? PetBloomColors.backgroundDark : PetBloomColors.background;
   const textMuted = isDark ? PetBloomColors.textMutedDark : PetBloomColors.textMuted;
-  const pageBg = isDark ? '#1A1B1C' : '#FFF8E7';
+  const pageBg = isDark ? PetBloomColors.questPageBgDark : PetBloomColors.questPageBg;
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: pageBg }]}>
@@ -210,7 +210,7 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   coinBadge: {
-    backgroundColor: 'rgba(245,158,11,0.15)',
+    backgroundColor: PetBloomColors.coinBadgeBg,
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 20,
@@ -285,7 +285,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   claimButton: {
-    backgroundColor: '#22c55e',
+    backgroundColor: PetBloomColors.happy,
     paddingHorizontal: 14,
     paddingVertical: 10,
     borderRadius: 12,
@@ -310,7 +310,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#22c55e',
+    backgroundColor: PetBloomColors.happy,
     alignItems: 'center',
     justifyContent: 'center',
   },

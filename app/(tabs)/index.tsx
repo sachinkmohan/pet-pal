@@ -81,6 +81,7 @@ export default function HomeScreen() {
       fedTime,
       statsEnabled,
       storedStage,
+      coinBalance,
     ] = await Promise.all([
       getItem<string>(STORAGE_KEYS.PET_NAME),
       getItem<string>(STORAGE_KEYS.FEED_PET_NAME),
@@ -92,8 +93,8 @@ export default function HomeScreen() {
       getItem<number>(STORAGE_KEYS.LAST_FED_TIME),
       getItem<boolean>(STORAGE_KEYS.USAGE_STATS_ENABLED),
       getItem<string>(STORAGE_KEYS.EVOLUTION_STAGE),
+      getCoins(),
     ]);
-    const coinBalance = await getCoins();
 
     const total = totalSessions ?? 0;
     const sessions = sessToday ?? 0;
@@ -212,7 +213,7 @@ export default function HomeScreen() {
                 🔥 {currentStreak} day streak
               </ThemedText>
             </View>
-            <View style={[styles.coinBadge, { backgroundColor: 'rgba(245,158,11,0.15)' }]}>
+            <View style={[styles.coinBadge, { backgroundColor: PetBloomColors.coinBadgeBg }]}>
               <ThemedText style={[styles.streakText, { color: PetBloomColors.thriving }]}>
                 🪙 {coins}
               </ThemedText>

@@ -47,6 +47,7 @@ export default function FocusScreen() {
   // Machine ref — single instance per screen mount
   const machineRef = useRef<FocusStateMachine | null>(null);
   const sessionDurationRef = useRef(duration);
+  const sessionStartedAtRef = useRef<Date>(new Date());
   const sessionActive = sessionState === "active";
 
   const loadData = useCallback(async () => {
@@ -118,8 +119,6 @@ export default function FocusScreen() {
     machineRef.current?.giveUp();
     cancelSessionNotification();
   }
-
-  const sessionStartedAtRef = useRef<Date>(new Date());
 
   async function saveSessionData(sessionDuration: number) {
     await resetDailyDataIfNeeded();

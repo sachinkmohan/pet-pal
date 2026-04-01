@@ -14,7 +14,9 @@ import {
 } from './QuestService';
 
 function dayIndex(): number {
-  return Math.floor(Date.now() / 86400000);
+  const now = new Date();
+  const localMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  return Math.floor(localMidnight.getTime() / 86400000);
 }
 
 export async function loadOrInitQuestState(): Promise<DailyQuestState> {

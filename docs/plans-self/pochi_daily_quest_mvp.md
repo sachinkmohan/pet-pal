@@ -2,7 +2,7 @@
 
 ## Overview
 
-A daily quest system that gives users a reason to open the app every day beyond feeding and focus sessions. One quest per day, rotating across 5 types, rewarding XP toward Pochi's evolution.
+A daily quest system that gives users a reason to open the app every day beyond feeding and focus sessions. One quest per day, rotating across 5 types, rewarding 🪙 Coins (soft currency).
 
 ---
 
@@ -11,7 +11,7 @@ A daily quest system that gives users a reason to open the app every day beyond 
 - One quest per day, resets at **midnight**
 - Quest is picked **deterministically** using the date as a seed (same quest for the whole day, no randomness on re-open)
 - 5 quest types in the pool, cycling so the same type doesn't repeat two days in a row
-- Completing the quest awards **XP**, which feeds directly into Pochi's evolution progress
+- Completing the quest awards **🪙 Coins** (soft currency for the future shop)
 
 ---
 
@@ -29,10 +29,10 @@ Every quest is completable in a single sitting, but each feels meaningfully diff
 
 ---
 
-## XP Structure
+## Coin Rewards
 
-- Each quest completion = **+50 XP**
-- XP feeds into the existing Pochi evolution milestone system
+- Each quest completion = **+50 🪙 Coins**
+- Coins are the soft currency — accumulated for future shop purchases
 - No streak bonus for quests at MVP (defer to v2)
 
 ---
@@ -95,12 +95,12 @@ function getTodaysQuest() {
 - `loadQuestState()` — reads from AsyncStorage, resets if date is stale
 - `updateQuestProgress(event)` — called after session complete or feed action
 - `checkQuestCompletion()` — returns `true` if quest conditions are met
-- `awardQuestXP()` — adds +50 XP to pet state
+- `claimQuestReward()` — adds +50 Coins to coin balance
 
 ### 2. Quest Card UI Component
 - Displayed on the Home screen
-- Shows: quest name, description, progress indicator, XP reward badge
-- On completion: show a success state + Pochi celebration animation
+- Shows: quest name, description, progress indicator, 🪙 coin reward badge
+- On completion: show a success state + floating coin animation
 - Disappears or shows "Completed ✓" state for the rest of the day
 
 ### 3. Hook Into Existing Flows
@@ -108,9 +108,9 @@ function getTodaysQuest() {
 - Feed action → call `updateQuestProgress({ type: 'feed' })`
 
 ### 4. Completion Reward
-- Award XP → update pet XP in AsyncStorage
-- Trigger small Pochi celebration animation (Lottie)
-- Mark quest as completed in storage
+- Award +50 🪙 Coins → update coin balance in AsyncStorage
+- Trigger floating coin animation (Animated API, not Lottie)
+- Mark quest as claimed in storage
 
 ---
 
@@ -127,7 +127,7 @@ function getTodaysQuest() {
 
 ## Future (v2) Ideas
 
-- Quest streak bonus (complete 7 days in a row → bonus XP)
+- Quest streak bonus (complete 7 days in a row → bonus Coins)
 - Weekly mega-quest with a bigger reward (accessory unlock)
 - Difficulty tiers (easy / normal / challenge quests)
 - Quest notifications ("Your daily quest is waiting, Pochi is excited!")
