@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { PetBloomColors } from '@/src/constants/Colors';
 import {
@@ -173,7 +174,7 @@ export default function QuestsScreen() {
                 style={({ pressed }) => [styles.arrowButton, { backgroundColor: isDark ? PetBloomColors.surfaceDark : PetBloomColors.surface, opacity: pressed ? 0.7 : 1 }]}
                 onPress={() => router.push('/(tabs)/focus')}
               >
-                <ThemedText style={[styles.arrowText, { color: textMuted }]}>→</ThemedText>
+                <IconSymbol name="arrow.right" size={22} color={textMuted} />
               </Pressable>
             )}
           </View>
@@ -304,10 +305,10 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  arrowText: {
-    fontSize: 18,
-    fontWeight: '600',
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.1)',
+    borderBottomWidth: 3,
+    borderBottomColor: 'rgba(0,0,0,0.18)',
   },
   claimedBadge: {
     width: 40,
