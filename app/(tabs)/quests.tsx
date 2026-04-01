@@ -1,4 +1,4 @@
-import { useFocusEffect } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Animated, Pressable, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -169,9 +169,12 @@ export default function QuestsScreen() {
                 <ThemedText style={styles.claimButtonText}>Claim!</ThemedText>
               </Pressable>
             ) : (
-              <View style={[styles.arrowButton, { backgroundColor: isDark ? PetBloomColors.surfaceDark : PetBloomColors.surface }]}>
+              <Pressable
+                style={({ pressed }) => [styles.arrowButton, { backgroundColor: isDark ? PetBloomColors.surfaceDark : PetBloomColors.surface, opacity: pressed ? 0.7 : 1 }]}
+                onPress={() => router.push('/(tabs)/focus')}
+              >
                 <ThemedText style={[styles.arrowText, { color: textMuted }]}>→</ThemedText>
-              </View>
+              </Pressable>
             )}
           </View>
         </View>
