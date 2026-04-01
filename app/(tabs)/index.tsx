@@ -28,6 +28,7 @@ import { FEED_COOLDOWN_MS, calculateMood } from "@/src/services/MoodService";
 import { formatDuration } from "@/src/utils/durationPicker";
 import { getItem, setItem } from "@/src/storage/AppStorage";
 import { STORAGE_KEYS } from "@/src/storage/keys";
+import { getCoins } from "@/src/services/QuestStorage";
 
 function getGreeting(): string {
   const hour = new Date().getHours();
@@ -66,6 +67,7 @@ export default function HomeScreen() {
   const [dailyMessage, setDailyMessage] = useState("");
   const [celebrationStage, setCelebrationStage] =
     useState<EvolutionStage | null>(null);
+  const [coins, setCoins] = useState(0);
 
   const loadData = useCallback(async () => {
     const [
@@ -91,6 +93,7 @@ export default function HomeScreen() {
       getItem<boolean>(STORAGE_KEYS.USAGE_STATS_ENABLED),
       getItem<string>(STORAGE_KEYS.EVOLUTION_STAGE),
     ]);
+    const coinBalance = await getCoins();
 
     const total = totalSessions ?? 0;
     const sessions = sessToday ?? 0;
@@ -127,6 +130,7 @@ export default function HomeScreen() {
     setLastFedTime(fedTime);
     setUsageStatsEnabled(statsEnabled ?? false);
     setDailyMessage(pickDailyMessage(mood));
+    setCoins(coinBalance);
   }, []);
 
   useFocusEffect(
@@ -194,18 +198,25 @@ export default function HomeScreen() {
             </View>
           </View>
 
-          {/* Streak Badge */}
-          <View
-            style={[
-              styles.streakBadge,
-              { backgroundColor: PetBloomColors.primaryLight },
-            ]}
-          >
-            <ThemedText
-              style={[styles.streakText, { color: PetBloomColors.streak }]}
+          {/* Streak + Coins row */}
+          <View style={styles.badgeRow}>
+            <View
+              style={[
+                styles.streakBadge,
+                { backgroundColor: PetBloomColors.primaryLight },
+              ]}
             >
-              🔥 {currentStreak} day streak
-            </ThemedText>
+              <ThemedText
+                style={[styles.streakText, { color: PetBloomColors.streak }]}
+              >
+                🔥 {currentStreak} day streak
+              </ThemedText>
+            </View>
+            <View style={[styles.coinBadge, { backgroundColor: 'rgba(245,158,11,0.15)' }]}>
+              <ThemedText style={[styles.streakText, { color: PetBloomColors.thriving }]}>
+                🪙 {coins}
+              </ThemedText>
+            </View>
           </View>
 
           {/* Pet Area */}
@@ -346,7 +357,18 @@ const styles = StyleSheet.create({
   date: {
     fontSize: 14,
   },
+  badgeRow: {
+    flexDirection: "row",
+    gap: 8,
+    flexWrap: "wrap",
+  },
   streakBadge: {
+    alignSelf: "flex-start",
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+  },
+  coinBadge: {
     alignSelf: "flex-start",
     paddingHorizontal: 16,
     paddingVertical: 8,

@@ -19,6 +19,7 @@ import {
 import { calculateMood } from "@/src/services/MoodService";
 import { getItem, removeItem, setItem } from "@/src/storage/AppStorage";
 import { STORAGE_KEYS } from "@/src/storage/keys";
+import { recordQuestEvent } from "@/src/services/QuestStorage";
 
 const TOTAL_TAPS = 3;
 
@@ -182,6 +183,7 @@ export default function FeedScreen() {
       setLastFedTime(now);
       setJustCompleted(true);
       calculateMood({ sessionsCompleted: sessionsToday, lastFedTime: now, screenTimeEnabled: statsEnabled });
+      await recordQuestEvent({ type: 'feed' });
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       setTimeout(
         () =>

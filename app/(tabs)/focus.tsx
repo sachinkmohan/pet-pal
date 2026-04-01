@@ -24,6 +24,7 @@ import {
 import { getItem, setItem } from "@/src/storage/AppStorage";
 import { STORAGE_KEYS } from "@/src/storage/keys";
 import { updateStreakAfterSession } from "@/src/services/StreakService";
+import { recordQuestEvent } from "@/src/services/QuestStorage";
 import { addRecentDuration } from "@/src/storage/recentDurations";
 import { resetDailyDataIfNeeded } from "@/src/storage/seedData";
 
@@ -107,6 +108,7 @@ export default function FocusScreen() {
     if (sessionState !== "idle" || !machineRef.current) return;
     const totalSecs = overrideSecs ?? duration * 60;
     sessionDurationRef.current = totalSecs / 60;
+    sessionStartedAtRef.current = new Date();
     if (overrideSecs !== undefined) setDuration(overrideSecs / 60);
     machineRef.current.startSession();
     showSessionNotification(petName, totalSecs);
@@ -116,6 +118,8 @@ export default function FocusScreen() {
     machineRef.current?.giveUp();
     cancelSessionNotification();
   }
+
+  const sessionStartedAtRef = useRef<Date>(new Date());
 
   async function saveSessionData(sessionDuration: number) {
     await resetDailyDataIfNeeded();
@@ -156,6 +160,11 @@ export default function FocusScreen() {
     });
 
     await updateStreakAfterSession();
+    await recordQuestEvent({
+      type: 'session',
+      durationMinutes: sessionDuration,
+      startedAt: sessionStartedAtRef.current,
+    });
 
     const stage = getEvolutionStage(newTotal);
     setPetEmoji(EVOLUTION_CONFIG[stage].emoji);
