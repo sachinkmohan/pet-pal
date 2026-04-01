@@ -22,6 +22,7 @@ const MAPPING = {
   'chart.bar.fill': 'bar-chart',
   'map.fill': 'map',
   'gearshape.fill': 'settings',
+  'star.fill': 'star',
 } as IconMapping;
 
 /**

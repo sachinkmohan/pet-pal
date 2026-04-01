@@ -35,8 +35,9 @@ app/
   feed.tsx             # Feed screen; pushed from Home button
   settings.tsx         # Settings screen (pet renaming); pushed from Home header gear icon
   (tabs)/
-    _layout.tsx        # Bottom tab navigator (Home / Step Away / Stats / Journey)
+    _layout.tsx        # Bottom tab navigator (Home / Quests / Step Away / Stats / Journey)
     index.tsx          # Home screen (gear icon → /settings)
+    quests.tsx         # Daily quest screen — quest card, claim flow, coin balance, countdown
     focus.tsx          # "Step Away" screen (formerly Focus)
     stats.tsx          # Stats screen
     journey.tsx        # Pet evolution timeline
@@ -74,6 +75,14 @@ src/
     StatsService.ts         # buildWeekBars(weeklyData, focusTimeToday) → number[7]
                             # buildDayLabels(now) → string[7] ending with 'Today'
                             # findPeakIndex(bars) → index of tallest bar, -1 if all zero
+    QuestService.ts         # Pure quest logic (no storage/RN deps): selectTodaysQuest(dayIndex),
+                            # evaluateProgress(state, event, def), isQuestComplete, isQuestStale,
+                            # createFreshQuestState, getTodayDateString — 27 TDD tests
+                            # QUEST_DEFINITIONS, QUEST_COINS_REWARD (50), DailyQuestState type
+    QuestStorage.ts         # Storage wiring: loadOrInitQuestState(), recordQuestEvent(event),
+                            # claimQuestReward() → { newCoinTotal, success }, getCoins()
+                            # recordQuestEvent called after updateStreakAfterSession() in focus.tsx
+                            # and after 3rd tap in feed.tsx
   storage/
     recentDurations.ts      # addRecentDuration(existing, duration) — deduplicates, caps at 5
                             # Used by Step Away screen quick-start chips
@@ -128,6 +137,10 @@ Domain components built so far (use these rather than re-implementing inline):
 - **Duration formatting:** Always use `formatDuration(minutes)` from `src/utils/durationPicker.ts` for displaying stat values. Output: `"25m"` / `"1h"` / `"1h 20m"`.
 - **Screen time:** Optional — app fully functional without `USAGE_STATS_ENABLED`. Never penalise mood if disabled.
 - **Pet never dies** — only reaches `sick` state. Always recoverable.
+- **Daily quest:** One quest per day, selected via `dayIndex % 5` (deterministic). Progress tracked in `STORAGE_KEYS.DAILY_QUEST`. `recordQuestEvent()` is called automatically after session save and feed complete — screens don't need to know about quests. User must tap **Claim!** explicitly to receive the reward.
+- **Quest reward:** +50 🪙 coins per quest. Coins stored in `STORAGE_KEYS.COINS`. No double-award: `claimed` flag prevents re-claiming. Gems (hard currency) deliberately omitted until IAP is wired.
+- **Quest event hook order:** In `focus.tsx`, call `recordQuestEvent` *after* `updateStreakAfterSession()`. Both are in `saveSessionData()`. This ordering is load-bearing — do not swap.
+- **`care_package` quest:** Uses bit flags for progress (bit 0 = fed, bit 1 = session done; target = 3). Feed and session can happen in any order. OR-ing is idempotent, so duplicate events are safe.
 
 ### Screen data refresh pattern
 

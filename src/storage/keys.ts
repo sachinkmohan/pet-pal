@@ -32,6 +32,10 @@ export const STORAGE_KEYS = {
   // Focus screen
   RECENT_DURATIONS: 'recentDurations', // number[] of last 5 unique saved session durations (minutes)
   MANUAL_DURATION_MODE: 'manualDurationMode', // boolean — true when HH:MM flip picker is active
+
+  // Daily Quest
+  DAILY_QUEST: 'daily_quest', // DailyQuestState JSON
+  COINS: 'coins', // number — accumulated coin balance
 } as const;
 
 export type StorageKey = (typeof STORAGE_KEYS)[keyof typeof STORAGE_KEYS];

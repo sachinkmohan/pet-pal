@@ -41,6 +41,11 @@ export const PetBloomColors = {
   white: '#ffffff',
   scrim: 'rgba(0,0,0,0.6)',  // modal backdrop
 
+  // Quest screen
+  questPageBg: '#FFF8E7',
+  questPageBgDark: '#1A1B1C',
+  coinBadgeBg: 'rgba(245,158,11,0.15)',
+
   // Tab bar
   tabActive: '#0a7ea4',
   tabInactive: '#687076',
