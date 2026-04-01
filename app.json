@@ -2,7 +2,7 @@
   "expo": {
     "name": "PetBloom",
     "slug": "petbloom",
-    "version": "1.1.1",
+    "version": "1.2.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "petbloom",
@@ -22,10 +22,15 @@
       "predictiveBackGestureEnabled": false,
       "permissions": [
         "android.permission.POST_NOTIFICATIONS",
+        "android.permission.VIBRATE",
+        "android.permission.POST_NOTIFICATIONS",
         "android.permission.VIBRATE"
       ],
       "package": "com.petbloom.app",
-      "versionCode": 2
+      "versionCode": 3,
+      "runtimeVersion": {
+        "policy": "appVersion"
+      }
     },
     "web": {
       "output": "static",
@@ -57,6 +62,9 @@
         "projectId": "d10b398c-001b-4fbb-9be4-e9906d835670"
       }
     },
-    "owner": "ecmalayalam"
+    "owner": "ecmalayalam",
+    "updates": {
+      "url": "https://u.expo.dev/d10b398c-001b-4fbb-9be4-e9906d835670"
+    }
   }
 }
