@@ -29,7 +29,7 @@ export default function RootLayout() {
       if (data?.type === 'session_running') {
         const sessionStillRunning = typeof data.endsAt === 'number' && Date.now() < data.endsAt;
         if (!sessionStillRunning) {
-          await Notifications.dismissNotificationAsync(response.notification.request.identifier);
+          await Notifications.dismissNotificationAsync(response.notification.request.identifier).catch((e) => console.warn('Failed to dismiss session notification:', e));
         }
         router.navigate('/(tabs)/focus');
       }
