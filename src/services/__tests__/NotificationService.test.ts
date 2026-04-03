@@ -71,6 +71,15 @@ describe('showSessionNotification', () => {
   });
 });
 
+describe('notification data', () => {
+  test('includes endsAt timestamp equal to now + durationSeconds * 1000', async () => {
+    const now = new Date('2026-01-01T14:00:00').getTime();
+    await showSessionNotification('Pochi', 1500, now);
+    const [request] = mockSchedule.mock.calls[0];
+    expect(request.content.data.endsAt).toBe(now + 1500 * 1000);
+  });
+});
+
 describe('cancelSessionNotification', () => {
   test('dismisses the sticky notification', async () => {
     mockSchedule.mockResolvedValue('sticky-id');

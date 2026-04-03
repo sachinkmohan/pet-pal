@@ -42,7 +42,7 @@ export async function showSessionNotification(
       body: `${durationMins} min · Ends at ${formatEndTime(durationSeconds, now)}`,
       sticky: true,
       autoDismiss: false,
-      data: { type: 'session_running' },
+      data: { type: 'session_running', endsAt: now + durationSeconds * 1000 },
     },
     trigger: null,
   });
