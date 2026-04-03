@@ -1,4 +1,5 @@
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
+import * as Notifications from 'expo-notifications';
 import * as SplashScreen from 'expo-splash-screen';
 import { router, Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -20,6 +21,21 @@ export const unstable_settings = {
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
+
+  // Handle session notification tap: navigate to focus tab, dismiss only if session has elapsed
+  useEffect(() => {
+    const sub = Notifications.addNotificationResponseReceivedListener(async (response) => {
+      const data = response.notification.request.content.data;
+      if (data?.type === 'session_running') {
+        const sessionStillRunning = typeof data.endsAt === 'number' && Date.now() < data.endsAt;
+        if (!sessionStillRunning) {
+          await Notifications.dismissNotificationAsync(response.notification.request.identifier).catch((e) => console.warn('Failed to dismiss session notification:', e));
+        }
+        router.navigate('/(tabs)/focus');
+      }
+    });
+    return () => sub.remove();
+  }, []);
 
   useEffect(() => {
     async function prepare() {

@@ -23,40 +23,41 @@ describe('formatEndTime', () => {
 
 describe('showSessionNotification', () => {
   test('schedules only the sticky running notification', async () => {
-    await showSessionNotification('Pochi', 1500);
+    await showSessionNotification('Pochi', 1500, '🐥');
     expect(mockSchedule).toHaveBeenCalledTimes(1);
   });
 
-  test('sticky notification has pet name in title', async () => {
-    await showSessionNotification('Pochi', 1500);
+  test('title contains pet name and pet emoji', async () => {
+    await showSessionNotification('Pochi', 1500, '🐥');
     const [request] = mockSchedule.mock.calls[0];
     expect(request.content.title).toContain('Pochi');
+    expect(request.content.title).toContain('🐥');
   });
 
   test('sticky notification is persistent: sticky, no auto-dismiss, immediate trigger', async () => {
-    await showSessionNotification('Pochi', 1500);
+    await showSessionNotification('Pochi', 1500, '🐥');
     const [request] = mockSchedule.mock.calls[0];
     expect(request.content.sticky).toBe(true);
     expect(request.content.autoDismiss).toBe(false);
     expect(request.trigger).toBeNull();
   });
 
-  test('body contains session end time', async () => {
-    await showSessionNotification('Pochi', 1500);
+  test('body contains come back time', async () => {
+    await showSessionNotification('Pochi', 1500, '🐥');
     const [request] = mockSchedule.mock.calls[0];
-    expect(request.content.body).toMatch(/\d+:\d{2} (AM|PM)/);
+    expect(request.content.body).toMatch(/Come back at \d+:\d{2} (AM|PM)/);
   });
 
   test('body contains the duration in minutes', async () => {
     // 1500 seconds = 25 minutes
-    await showSessionNotification('Pochi', 1500);
+    await showSessionNotification('Pochi', 1500, '🐥');
     const [request] = mockSchedule.mock.calls[0];
     expect(request.content.body).toContain('25 min');
   });
 
   test('does nothing if permission is denied', async () => {
     mockPermissions.mockResolvedValue({ status: 'denied' });
-    await showSessionNotification('Pochi', 1500);
+    await showSessionNotification('Pochi', 1500, '🐥');
     expect(mockSchedule).not.toHaveBeenCalled();
   });
 
@@ -64,17 +65,26 @@ describe('showSessionNotification', () => {
     mockSchedule
       .mockResolvedValueOnce('first-id')
       .mockResolvedValueOnce('second-id');
-    await showSessionNotification('Pochi', 1500);
-    await showSessionNotification('Pochi', 1500);
+    await showSessionNotification('Pochi', 1500, '🐥');
+    await showSessionNotification('Pochi', 1500, '🐥');
     expect(mockDismiss).toHaveBeenCalledWith('first-id');
     expect(mockSchedule).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe('notification data', () => {
+  test('includes endsAt timestamp equal to now + durationSeconds * 1000', async () => {
+    const now = new Date('2026-01-01T14:00:00').getTime();
+    await showSessionNotification('Pochi', 1500, '🐥', now);
+    const [request] = mockSchedule.mock.calls[0];
+    expect(request.content.data.endsAt).toBe(now + 1500 * 1000);
   });
 });
 
 describe('cancelSessionNotification', () => {
   test('dismisses the sticky notification', async () => {
     mockSchedule.mockResolvedValue('sticky-id');
-    await showSessionNotification('Pochi', 1500);
+    await showSessionNotification('Pochi', 1500, '🐥');
     await cancelSessionNotification();
     expect(mockDismiss).toHaveBeenCalledWith('sticky-id');
   });
