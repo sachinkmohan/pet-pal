@@ -28,6 +28,7 @@ export function formatEndTime(durationSeconds: number, now = Date.now()): string
 export async function showSessionNotification(
   petName: string,
   durationSeconds: number,
+  petEmoji: string,
   now = Date.now(),
 ): Promise<void> {
   const { status } = await Notifications.requestPermissionsAsync();
@@ -38,8 +39,8 @@ export async function showSessionNotification(
   const durationMins = Math.round(durationSeconds / 60);
   activeNotificationId = await Notifications.scheduleNotificationAsync({
     content: {
-      title: `${petName} is waiting... 🐣`,
-      body: `${durationMins} min · Ends at ${formatEndTime(durationSeconds, now)}`,
+      title: `Don't leave ${petName} alone! ${petEmoji}`,
+      body: `${durationMins} min · Come back at ${formatEndTime(durationSeconds, now)}`,
       sticky: true,
       autoDismiss: false,
       data: { type: 'session_running', endsAt: now + durationSeconds * 1000 },

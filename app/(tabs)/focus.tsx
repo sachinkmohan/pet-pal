@@ -112,7 +112,7 @@ export default function FocusScreen() {
     sessionStartedAtRef.current = new Date();
     if (overrideSecs !== undefined) setDuration(overrideSecs / 60);
     machineRef.current.startSession();
-    showSessionNotification(petName, totalSecs);
+    showSessionNotification(petName, totalSecs, petEmoji);
   }
 
   function handleGiveUp() {
