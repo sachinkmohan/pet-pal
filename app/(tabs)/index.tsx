@@ -284,7 +284,7 @@ export default function HomeScreen() {
               <ThemedText
                 style={[styles.statValue, { color: PetBloomColors.focusBar }]}
               >
-                {formatDuration(focusTimeToday)}
+                {formatDuration(Math.round(focusTimeToday))}
               </ThemedText>
               <ThemedText style={[styles.statLabel, { color: textMuted }]}>
                 Screen Away Time

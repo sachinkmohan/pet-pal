@@ -1,4 +1,4 @@
-import { useFocusEffect, useLocalSearchParams, useNavigation } from "expo-router";
+import { router, useFocusEffect, useLocalSearchParams, useNavigation } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AppState, Modal, Pressable, ScrollView, StyleSheet, Switch, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -18,6 +18,7 @@ import {
 } from "@/src/services/FocusService";
 import { calculateMood } from "@/src/services/MoodService";
 import {
+  cancelPrePhaseNotification,
   cancelSessionNotification,
   showPrePhaseNotification,
   showSessionNotification,
@@ -26,7 +27,7 @@ import { getItem, setItem } from "@/src/storage/AppStorage";
 import { STORAGE_KEYS } from "@/src/storage/keys";
 import { updateStreakAfterSession } from "@/src/services/StreakService";
 import { recordQuestEvent } from "@/src/services/QuestStorage";
-import { adjustSessionDuration } from "@/src/services/TaskService";
+import { adjustSessionDuration, calculateTaskCoins } from "@/src/services/TaskService";
 import { addRecentDuration } from "@/src/storage/recentDurations";
 import { resetDailyDataIfNeeded } from "@/src/storage/seedData";
 import { formatDuration } from "@/src/utils/durationPicker";
@@ -97,7 +98,6 @@ export default function FocusScreen() {
       loadData();
       return () => {
         machineRef.current?.giveUp();
-        cancelSessionNotification();
       };
     }, [loadData]),
   );
@@ -127,8 +127,7 @@ export default function FocusScreen() {
     const machine = createFocusStateMachine((state) => {
       setSessionState(state);
       if (state === "completed") {
-        // Don't save yet — wait for user to confirm or deny
-        // Notification intentionally left in tray — user dismisses manually
+        cancelSessionNotification();
         setCompletedDuration(sessionDurationRef.current);
         setSessionComplete(true);
       }
@@ -151,6 +150,7 @@ export default function FocusScreen() {
         prePhaseEndTimeRef.current > 0 &&
         Date.now() >= prePhaseEndTimeRef.current
       ) {
+        cancelPrePhaseNotification();
         setTaskPhase('session');
         if (taskDurationSecondsRef.current !== null) {
           const overdueMs = Date.now() - prePhaseEndTimeRef.current;
@@ -168,7 +168,7 @@ export default function FocusScreen() {
   function handleStart(overrideSecs?: number) {
     if (!machineRef.current || machineRef.current.getState() !== 'idle') return;
     const totalSecs = overrideSecs ?? duration * 60;
-    sessionDurationRef.current = totalSecs / 60;
+    sessionDurationRef.current = Math.round(totalSecs / 60);
     sessionStartedAtRef.current = new Date();
     if (overrideSecs !== undefined) setDuration(overrideSecs / 60);
     machineRef.current.startSession();
@@ -219,7 +219,7 @@ export default function FocusScreen() {
     const newTotal = (totalSessions ?? 0) + 1;
     const newSessionsToday = (sessionsToday ?? 0) + 1;
     const newFocusTime = (focusTimeToday ?? 0) + sessionDuration;
-    const newRecents = addRecentDuration(recents ?? [], sessionDuration);
+    const newRecents = isTaskMode ? (recents ?? []) : addRecentDuration(recents ?? [], sessionDuration);
 
     await Promise.all([
       setItem(STORAGE_KEYS.TOTAL_SESSIONS_EVER, newTotal),
@@ -250,12 +250,14 @@ export default function FocusScreen() {
     await saveSessionData(completedDuration);
     setSessionComplete(false);
     machineRef.current?.giveUp(); // completed → idle
+    if (isTaskMode) router.back();
   }
 
   function handleDontSave() {
     // User admitted they cheated — discard without recording
     setSessionComplete(false);
     machineRef.current?.giveUp(); // completed → idle
+    if (isTaskMode) router.back();
   }
 
   // Theme-aware colors
@@ -282,6 +284,7 @@ export default function FocusScreen() {
               key="pre-phase"
               totalSeconds={120}
               onComplete={() => {
+                cancelPrePhaseNotification();
                 setTaskPhase('session');
                 if (taskDurationSeconds !== null) {
                   setActiveSessionDuration(taskDurationSeconds);
@@ -296,6 +299,7 @@ export default function FocusScreen() {
               <Pressable
                 style={({ pressed }) => [styles.testButton, { opacity: pressed ? 0.7 : 1 }]}
                 onPress={() => {
+                  cancelPrePhaseNotification();
                   setTaskPhase('session');
                   if (taskDurationSeconds !== null) {
                     setActiveSessionDuration(taskDurationSeconds);
@@ -512,14 +516,27 @@ export default function FocusScreen() {
         <View style={styles.backdrop}>
           <View style={[styles.celebCard, { backgroundColor: cardBg }]}>
             <ThemedText style={styles.celebEmoji}>{petEmoji}</ThemedText>
-            <ThemedText style={styles.celebHeading}>
-              You showed up! 🎉
-            </ThemedText>
-            <ThemedText style={[styles.celebSub, { color: textMuted }]}>
-              {completedDuration} minute{completedDuration !== 1 ? "s" : ""}{" "}
-              with {petName}.{"\n"}
-              {petName} loved every minute.
-            </ThemedText>
+            {isTaskMode ? (
+              <>
+                <ThemedText style={styles.celebHeading}>Session done! 🎯</ThemedText>
+                <ThemedText style={[styles.celebSub, { color: textMuted }]}>
+                  You focused {completedDuration} min on{'\n'}
+                  <ThemedText style={{ fontWeight: '700' }}>{taskName}</ThemedText>
+                </ThemedText>
+                <ThemedText style={[styles.celebSub, { color: PetBloomColors.primary }]}>
+                  Mark it complete to earn {calculateTaskCoins(taskDurationSeconds)} coins 🪙
+                </ThemedText>
+              </>
+            ) : (
+              <>
+                <ThemedText style={styles.celebHeading}>You showed up! 🎉</ThemedText>
+                <ThemedText style={[styles.celebSub, { color: textMuted }]}>
+                  {completedDuration} minute{completedDuration !== 1 ? 's' : ''}{' '}
+                  with {petName}.{'\n'}
+                  {petName} loved every minute.
+                </ThemedText>
+              </>
+            )}
 
             <Pressable
               style={({ pressed }) => [

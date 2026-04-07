@@ -17,6 +17,7 @@ Notifications.setNotificationHandler({
 });
 
 let activeNotificationId: string | null = null;
+let activePrePhaseNotificationId: string | null = null;
 
 export function formatEndTime(durationSeconds: number, now = Date.now()): string {
   const end = new Date(now + durationSeconds * 1000);
@@ -84,15 +85,23 @@ export async function showPrePhaseNotification(
 ): Promise<void> {
   const { status } = await Notifications.requestPermissionsAsync();
   if (status !== 'granted') return;
-  await Notifications.scheduleNotificationAsync({
+  await cancelPrePhaseNotification();
+  activePrePhaseNotificationId = await Notifications.scheduleNotificationAsync({
     content: {
       title: '2-min warm-up started ⏱️',
       body: formatPrePhaseBody(taskDurationSeconds, now),
-      autoDismiss: true,
+      sticky: true,
+      autoDismiss: false,
       data: { type: 'pre_phase' },
     },
     trigger: null,
   });
+}
+
+export async function cancelPrePhaseNotification(): Promise<void> {
+  if (activePrePhaseNotificationId === null) return;
+  await Notifications.dismissNotificationAsync(activePrePhaseNotificationId);
+  activePrePhaseNotificationId = null;
 }
 
 export async function cancelSessionNotification(): Promise<void> {
