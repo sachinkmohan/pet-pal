@@ -24,6 +24,7 @@ const MAPPING = {
   'map.fill': 'map',
   'gearshape.fill': 'settings',
   'star.fill': 'star',
+  'checklist': 'checklist',
 } as IconMapping;
 
 /**

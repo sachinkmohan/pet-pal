@@ -1,4 +1,4 @@
-import { useFocusEffect, useNavigation } from "expo-router";
+import { useFocusEffect, useLocalSearchParams, useNavigation } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Modal, Pressable, ScrollView, StyleSheet, Switch, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -31,6 +31,16 @@ import { resetDailyDataIfNeeded } from "@/src/storage/seedData";
 export default function FocusScreen() {
   const isDark = useColorScheme() === "dark";
   const navigation = useNavigation();
+
+  // Task params (when launched from Tasks screen)
+  const params = useLocalSearchParams<{ taskName?: string; durationSeconds?: string }>();
+  const taskName = params.taskName ?? null;
+  const taskDurationSeconds = params.durationSeconds ? parseInt(params.durationSeconds, 10) : null;
+  const isTaskMode = taskName !== null;
+
+  // Pre-phase: 2-minute countdown before the real session (task mode only)
+  // 'pre' → 2-min countdown; 'session' → real session
+  const [taskPhase, setTaskPhase] = useState<'pre' | 'session'>('pre');
 
   // Setup state
   const [duration, setDuration] = useState(25);
@@ -79,12 +89,18 @@ export default function FocusScreen() {
     }, [loadData]),
   );
 
-  // Hide tab bar during active session
+  // Reset pre-phase when a new task is pushed (taskName changes)
+  useEffect(() => {
+    if (isTaskMode) setTaskPhase('pre');
+  }, [isTaskMode, taskName]);
+
+  // Hide tab bar during active session OR task pre-phase
+  const shouldHideTabBar = sessionActive || (isTaskMode && taskPhase === 'pre');
   useEffect(() => {
     navigation.setOptions({
-      tabBarStyle: sessionActive ? { display: "none" } : undefined,
+      tabBarStyle: shouldHideTabBar ? { display: "none" } : undefined,
     });
-  }, [sessionActive, navigation]);
+  }, [shouldHideTabBar, navigation]);
 
   // Create machine once
   useEffect(() => {
@@ -118,6 +134,23 @@ export default function FocusScreen() {
   function handleGiveUp() {
     machineRef.current?.giveUp();
     cancelSessionNotification();
+  }
+
+  // Open flow (task with no duration): start machine without a timed countdown
+  function handleStartOpenFlow() {
+    if (sessionState !== "idle" || !machineRef.current) return;
+    sessionStartedAtRef.current = new Date();
+    sessionDurationRef.current = 0; // will be set dynamically on end
+    machineRef.current.startSession();
+    // No notification — end time unknown
+  }
+
+  // End open flow: calculate elapsed time then trigger completion
+  function handleEndOpenFlow() {
+    const elapsedMs = Date.now() - sessionStartedAtRef.current.getTime();
+    const elapsedMinutes = Math.max(1, Math.round(elapsedMs / 60000));
+    sessionDurationRef.current = elapsedMinutes;
+    machineRef.current?.timerComplete();
   }
 
   async function saveSessionData(sessionDuration: number) {
@@ -191,8 +224,69 @@ export default function FocusScreen() {
   return (
     <SafeAreaView style={styles.safeArea}>
       <ThemedView style={styles.container}>
-        {/* ── Active session view ── */}
-        {sessionActive ? (
+        {/* ── Task pre-phase: 2-minute starter ── */}
+        {isTaskMode && taskPhase === 'pre' ? (
+          <View style={styles.sessionContainer}>
+            <ThemedText style={styles.title}>{taskName}</ThemedText>
+            <ThemedText style={[styles.sessionHint, { color: textMuted }]}>
+              Starting in 2 minutes…
+            </ThemedText>
+            <CircularCountdown
+              totalSeconds={120}
+              onComplete={() => {
+                setTaskPhase('session');
+                if (taskDurationSeconds) {
+                  handleStart(taskDurationSeconds);
+                } else {
+                  handleStartOpenFlow();
+                }
+              }}
+            />
+            <ThemedText style={[styles.sessionHint, { color: textMuted, fontSize: 13 }]}>
+              Just get started. Two minutes, that's all.
+            </ThemedText>
+          </View>
+
+        ) : /* ── Task session with duration ── */
+        isTaskMode && taskPhase === 'session' && taskDurationSeconds && sessionActive ? (
+          <View style={styles.sessionContainer}>
+            <ThemedText style={styles.title}>{taskName}</ThemedText>
+            <CircularCountdown
+              totalSeconds={taskDurationSeconds}
+              onComplete={() => machineRef.current?.timerComplete()}
+            />
+            <ThemedText style={[styles.sessionHint, { color: textMuted }]}>
+              Phone down. {petName} needs you.
+            </ThemedText>
+            <Pressable
+              style={({ pressed }) => [styles.giveUpButton, { opacity: pressed ? 0.7 : 1 }]}
+              onPress={handleGiveUp}
+            >
+              <ThemedText style={[styles.giveUpText, { color: textMuted }]}>Give Up</ThemedText>
+            </Pressable>
+          </View>
+
+        ) : /* ── Task open flow (no duration) ── */
+        isTaskMode && taskPhase === 'session' && !taskDurationSeconds && sessionActive ? (
+          <View style={styles.sessionContainer}>
+            <ThemedText style={styles.title}>{taskName}</ThemedText>
+            <ThemedText style={styles.petEmoji}>{petEmoji}</ThemedText>
+            <ThemedText style={[styles.sessionHint, { color: textMuted }]}>
+              You're in flow. {petName} is with you. ☁️
+            </ThemedText>
+            <Pressable
+              style={({ pressed }) => [
+                styles.startButton,
+                { backgroundColor: PetBloomColors.primary, opacity: pressed ? 0.85 : 1, marginHorizontal: 24 },
+              ]}
+              onPress={handleEndOpenFlow}
+            >
+              <ThemedText style={styles.startButtonText}>End Session</ThemedText>
+            </Pressable>
+          </View>
+
+        ) : /* ── Regular active session ── */
+        sessionActive ? (
           <View style={styles.sessionContainer}>
             <ThemedText style={styles.title}>
               You're with {petName} ☁️
