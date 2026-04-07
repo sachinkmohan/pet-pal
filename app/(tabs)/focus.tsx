@@ -27,6 +27,7 @@ import { updateStreakAfterSession } from "@/src/services/StreakService";
 import { recordQuestEvent } from "@/src/services/QuestStorage";
 import { addRecentDuration } from "@/src/storage/recentDurations";
 import { resetDailyDataIfNeeded } from "@/src/storage/seedData";
+import { formatDuration } from "@/src/utils/durationPicker";
 
 export default function FocusScreen() {
   const isDark = useColorScheme() === "dark";
@@ -227,10 +228,13 @@ export default function FocusScreen() {
         {/* ── Task pre-phase: 2-minute starter ── */}
         {isTaskMode && taskPhase === 'pre' ? (
           <View style={styles.sessionContainer}>
-            <ThemedText style={styles.title}>{taskName}</ThemedText>
-            <ThemedText style={[styles.sessionHint, { color: textMuted }]}>
-              Starting in 2 minutes…
-            </ThemedText>
+            <View style={styles.prePhasHeader}>
+              <ThemedText style={[styles.prePhaseLabel, { color: PetBloomColors.primary }]}>
+                2-min warm-up
+              </ThemedText>
+              <ThemedText style={styles.title}>{taskName}</ThemedText>
+            </View>
+
             <CircularCountdown
               totalSeconds={120}
               onComplete={() => {
@@ -242,8 +246,15 @@ export default function FocusScreen() {
                 }
               }}
             />
-            <ThemedText style={[styles.sessionHint, { color: textMuted, fontSize: 13 }]}>
-              Just get started. Two minutes, that's all.
+
+            <ThemedText style={[styles.prePhaseQuote, { color: textMuted }]}>
+              "The resistance you feel right now isn't about the task — it's about the idea of it. Two minutes of doing is all it takes to make it disappear."
+            </ThemedText>
+
+            <ThemedText style={[styles.prePhaseNext, { color: textMuted }]}>
+              {taskDurationSeconds
+                ? `Then your ${formatDuration(Math.round(taskDurationSeconds / 60))} session begins.`
+                : 'Then your open session begins.'}
             </ThemedText>
           </View>
 
@@ -570,6 +581,28 @@ const styles = StyleSheet.create({
   sessionHint: {
     fontSize: 16,
     textAlign: "center",
+  },
+  prePhasHeader: {
+    alignItems: "center",
+    gap: 6,
+  },
+  prePhaseLabel: {
+    fontSize: 12,
+    fontWeight: "700",
+    letterSpacing: 1,
+    textTransform: "uppercase",
+  },
+  prePhaseQuote: {
+    fontSize: 13,
+    fontStyle: "italic",
+    textAlign: "center",
+    lineHeight: 20,
+  },
+  prePhaseNext: {
+    fontSize: 12,
+    fontWeight: "600",
+    textAlign: "center",
+    letterSpacing: 0.2,
   },
   giveUpButton: {
     position: "absolute",
