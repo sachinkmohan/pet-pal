@@ -5,6 +5,7 @@
  * Scheduled notifications (pet hungry, daily reminder, streak): Session 18.
  */
 import * as Notifications from 'expo-notifications';
+import { formatDuration } from '@/src/utils/durationPicker';
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -49,6 +50,50 @@ export async function showSessionNotification(
   });
 }
 
+
+export function formatCheckpointBody(durationSeconds: number | null): string {
+  if (durationSeconds === null) return "You're in flow. Let's go.";
+  const minutes = Math.round(durationSeconds / 60);
+  return `Your ${formatDuration(minutes)} session begins now.`;
+}
+
+export async function showCheckpointNotification(durationSeconds: number | null): Promise<void> {
+  const { status } = await Notifications.requestPermissionsAsync();
+  if (status !== 'granted') return;
+
+  await Notifications.scheduleNotificationAsync({
+    content: {
+      title: 'Two minutes done! 🎯',
+      body: formatCheckpointBody(durationSeconds),
+      autoDismiss: true,
+      data: { type: 'checkpoint' },
+    },
+    trigger: null,
+  });
+}
+
+export function formatPrePhaseBody(taskDurationSeconds: number | null, now: number): string {
+  const taskBeginsAt = formatEndTime(120, now);
+  if (taskDurationSeconds === null) return `Task begins at ${taskBeginsAt}`;
+  return `Task begins at ${taskBeginsAt} · Ends at ${formatEndTime(taskDurationSeconds, now + 120_000)}`;
+}
+
+export async function showPrePhaseNotification(
+  taskDurationSeconds: number | null,
+  now = Date.now(),
+): Promise<void> {
+  const { status } = await Notifications.requestPermissionsAsync();
+  if (status !== 'granted') return;
+  await Notifications.scheduleNotificationAsync({
+    content: {
+      title: '2-min warm-up started ⏱️',
+      body: formatPrePhaseBody(taskDurationSeconds, now),
+      autoDismiss: true,
+      data: { type: 'pre_phase' },
+    },
+    trigger: null,
+  });
+}
 
 export async function cancelSessionNotification(): Promise<void> {
   if (activeNotificationId === null) return;

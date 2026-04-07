@@ -1,6 +1,6 @@
 import { useFocusEffect, useLocalSearchParams, useNavigation } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Modal, Pressable, ScrollView, StyleSheet, Switch, View } from "react-native";
+import { AppState, Modal, Pressable, ScrollView, StyleSheet, Switch, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { CircularCountdown } from "@/components/circular-countdown";
@@ -19,12 +19,14 @@ import {
 import { calculateMood } from "@/src/services/MoodService";
 import {
   cancelSessionNotification,
+  showPrePhaseNotification,
   showSessionNotification,
 } from "@/src/services/NotificationService";
 import { getItem, setItem } from "@/src/storage/AppStorage";
 import { STORAGE_KEYS } from "@/src/storage/keys";
 import { updateStreakAfterSession } from "@/src/services/StreakService";
 import { recordQuestEvent } from "@/src/services/QuestStorage";
+import { adjustSessionDuration } from "@/src/services/TaskService";
 import { addRecentDuration } from "@/src/storage/recentDurations";
 import { resetDailyDataIfNeeded } from "@/src/storage/seedData";
 import { formatDuration } from "@/src/utils/durationPicker";
@@ -42,6 +44,7 @@ export default function FocusScreen() {
   // Pre-phase: 2-minute countdown before the real session (task mode only)
   // 'pre' → 2-min countdown; 'session' → real session
   const [taskPhase, setTaskPhase] = useState<'pre' | 'session'>('pre');
+  const [activeSessionDuration, setActiveSessionDuration] = useState(taskDurationSeconds ?? 0);
 
   // Setup state
   const [duration, setDuration] = useState(25);
@@ -59,7 +62,16 @@ export default function FocusScreen() {
   const machineRef = useRef<FocusStateMachine | null>(null);
   const sessionDurationRef = useRef(duration);
   const sessionStartedAtRef = useRef<Date>(new Date());
+  const prePhaseEndTimeRef = useRef<number>(0);
+  const taskPhaseRef = useRef<'pre' | 'session'>('pre');
+  const isTaskModeRef = useRef(isTaskMode);
+  const taskDurationSecondsRef = useRef(taskDurationSeconds);
   const sessionActive = sessionState === "active";
+
+  // Keep refs in sync with current render values
+  taskPhaseRef.current = taskPhase;
+  isTaskModeRef.current = isTaskMode;
+  taskDurationSecondsRef.current = taskDurationSeconds;
 
   const loadData = useCallback(async () => {
     const [name, totalSessions, recents, manualModeStored] = await Promise.all([
@@ -95,6 +107,13 @@ export default function FocusScreen() {
     if (isTaskMode) setTaskPhase('pre');
   }, [isTaskMode, taskName]);
 
+  // Fire pre-phase notification and record end time when warm-up starts
+  useEffect(() => {
+    if (!isTaskMode || taskPhase !== 'pre') return;
+    prePhaseEndTimeRef.current = Date.now() + 120_000;
+    showPrePhaseNotification(taskDurationSeconds);
+  }, [isTaskMode, taskPhase, taskDurationSeconds]);
+
   // Hide tab bar during active session OR task pre-phase
   const shouldHideTabBar = sessionActive || (isTaskMode && taskPhase === 'pre');
   useEffect(() => {
@@ -122,8 +141,32 @@ export default function FocusScreen() {
     };
   }, []);
 
+  // Auto-transition from pre-phase to session when returning to app after warm-up has elapsed
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (nextState) => {
+      if (
+        nextState === 'active' &&
+        isTaskModeRef.current &&
+        taskPhaseRef.current === 'pre' &&
+        prePhaseEndTimeRef.current > 0 &&
+        Date.now() >= prePhaseEndTimeRef.current
+      ) {
+        setTaskPhase('session');
+        if (taskDurationSecondsRef.current !== null) {
+          const overdueMs = Date.now() - prePhaseEndTimeRef.current;
+          const adjusted = adjustSessionDuration(taskDurationSecondsRef.current, overdueMs);
+          setActiveSessionDuration(adjusted);
+          handleStart(adjusted);
+        } else {
+          handleStartOpenFlow();
+        }
+      }
+    });
+    return () => sub.remove();
+  }, []);
+
   function handleStart(overrideSecs?: number) {
-    if (sessionState !== "idle" || !machineRef.current) return;
+    if (!machineRef.current || machineRef.current.getState() !== 'idle') return;
     const totalSecs = overrideSecs ?? duration * 60;
     sessionDurationRef.current = totalSecs / 60;
     sessionStartedAtRef.current = new Date();
@@ -139,7 +182,7 @@ export default function FocusScreen() {
 
   // Open flow (task with no duration): start machine without a timed countdown
   function handleStartOpenFlow() {
-    if (sessionState !== "idle" || !machineRef.current) return;
+    if (!machineRef.current || machineRef.current.getState() !== 'idle') return;
     sessionStartedAtRef.current = new Date();
     sessionDurationRef.current = 0; // will be set dynamically on end
     machineRef.current.startSession();
@@ -236,16 +279,37 @@ export default function FocusScreen() {
             </View>
 
             <CircularCountdown
+              key="pre-phase"
               totalSeconds={120}
               onComplete={() => {
                 setTaskPhase('session');
-                if (taskDurationSeconds) {
+                if (taskDurationSeconds !== null) {
+                  setActiveSessionDuration(taskDurationSeconds);
                   handleStart(taskDurationSeconds);
                 } else {
                   handleStartOpenFlow();
                 }
               }}
             />
+
+            {__DEV__ && (
+              <Pressable
+                style={({ pressed }) => [styles.testButton, { opacity: pressed ? 0.7 : 1 }]}
+                onPress={() => {
+                  setTaskPhase('session');
+                  if (taskDurationSeconds !== null) {
+                    setActiveSessionDuration(taskDurationSeconds);
+                    handleStart(taskDurationSeconds);
+                  } else {
+                    handleStartOpenFlow();
+                  }
+                }}
+              >
+                <ThemedText style={[styles.testButtonText, { color: textMuted }]}>
+                  ⚡ skip warm-up
+                </ThemedText>
+              </Pressable>
+            )}
 
             <ThemedText style={[styles.prePhaseQuote, { color: textMuted }]}>
               "The resistance you feel right now isn't about the task — it's about the idea of it. Two minutes of doing is all it takes to make it disappear."
@@ -263,7 +327,8 @@ export default function FocusScreen() {
           <View style={styles.sessionContainer}>
             <ThemedText style={styles.title}>{taskName}</ThemedText>
             <CircularCountdown
-              totalSeconds={taskDurationSeconds}
+              key="task-session"
+              totalSeconds={activeSessionDuration}
               onComplete={() => machineRef.current?.timerComplete()}
             />
             <ThemedText style={[styles.sessionHint, { color: textMuted }]}>
@@ -304,6 +369,7 @@ export default function FocusScreen() {
             </ThemedText>
 
             <CircularCountdown
+              key="regular-session"
               totalSeconds={duration * 60}
               onComplete={() => machineRef.current?.timerComplete()}
             />

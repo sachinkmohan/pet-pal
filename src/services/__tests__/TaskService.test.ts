@@ -6,6 +6,8 @@ import {
   filterForNewDay,
   buildRolling7Days,
   processTaskInput,
+  calculateTaskCoins,
+  adjustSessionDuration,
   type Task,
 } from '../TaskService';
 
@@ -304,5 +306,50 @@ describe('processTaskInput', () => {
     const result = processTaskInput('Deep work 2h', 600);
     expect(result.displayText).toBe('Deep work');
     expect(result.durationSeconds).toBe(7200);
+  });
+});
+
+// ── calculateTaskCoins ────────────────────────────────────────────────────────
+
+describe('calculateTaskCoins', () => {
+  test('tracer bullet: null → 5 (minimum floor)', () => {
+    expect(calculateTaskCoins(null)).toBe(5);
+  });
+
+  test('600s (10m) → 5 (max(5, round(600/300)) = max(5,2) = 5)', () => {
+    expect(calculateTaskCoins(600)).toBe(5);
+  });
+
+  test('1800s (30m) → 6 (max(5, round(1800/300)) = max(5,6) = 6)', () => {
+    expect(calculateTaskCoins(1800)).toBe(6);
+  });
+
+  test('3600s (60m) → 12 (max(5, round(3600/300)) = max(5,12) = 12)', () => {
+    expect(calculateTaskCoins(3600)).toBe(12);
+  });
+
+  test('300s (5m) → 5 (max(5, round(300/300)) = max(5,1) = 5)', () => {
+    expect(calculateTaskCoins(300)).toBe(5);
+  });
+});
+
+// ── adjustSessionDuration ─────────────────────────────────────────────────────
+
+describe('adjustSessionDuration', () => {
+  test('tracer bullet: no overdue → returns full duration', () => {
+    expect(adjustSessionDuration(600, 0)).toBe(600);
+  });
+
+  test('2 min overdue on 10 min task → 480s remaining', () => {
+    expect(adjustSessionDuration(600, 120_000)).toBe(480);
+  });
+
+  test('overdue exceeds duration → floors at 5', () => {
+    expect(adjustSessionDuration(600, 700_000)).toBe(5);
+  });
+
+  test('fractional overdue rounds to nearest second', () => {
+    // 90_500ms → rounds to 91s → 600 - 91 = 509
+    expect(adjustSessionDuration(600, 90_500)).toBe(509);
   });
 });

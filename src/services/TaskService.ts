@@ -83,6 +83,26 @@ export function processTaskInput(
   return { displayText: newText, durationSeconds: existingDuration };
 }
 
+/**
+ * Returns the coin reward for completing a task.
+ * Formula: max(5, round(durationSeconds / 300))
+ * Minimum of 5 coins regardless of duration. Null duration (no timer) also returns 5.
+ */
+export function calculateTaskCoins(durationSeconds: number | null): number {
+  if (durationSeconds === null) return 5;
+  return Math.max(5, Math.round(durationSeconds / 300));
+}
+
+/**
+ * Adjusts the session duration to account for time already elapsed while
+ * the pre-phase countdown was overdue (user did not start on time).
+ * Returns durationSeconds minus overdueMs converted to seconds, floored at 5s.
+ */
+export function adjustSessionDuration(durationSeconds: number, overdueMs: number): number {
+  const adjusted = durationSeconds - Math.round(overdueMs / 1000);
+  return Math.max(5, adjusted);
+}
+
 export function buildRolling7Days(
   completions: { completedAt: string }[],
   now: Date,

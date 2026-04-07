@@ -1,5 +1,5 @@
 import * as Notifications from 'expo-notifications';
-import { showSessionNotification, cancelSessionNotification, formatEndTime } from '../NotificationService';
+import { showSessionNotification, cancelSessionNotification, formatEndTime, formatCheckpointBody, formatPrePhaseBody } from '../NotificationService';
 
 jest.mock('expo-notifications');
 
@@ -81,6 +81,24 @@ describe('notification data', () => {
   });
 });
 
+describe('formatCheckpointBody', () => {
+  test('tracer bullet: 600s → "Your 10m session begins now."', () => {
+    expect(formatCheckpointBody(600)).toBe('Your 10m session begins now.');
+  });
+
+  test('3600s → "Your 1h session begins now."', () => {
+    expect(formatCheckpointBody(3600)).toBe('Your 1h session begins now.');
+  });
+
+  test('5400s → "Your 1h 30m session begins now."', () => {
+    expect(formatCheckpointBody(5400)).toBe('Your 1h 30m session begins now.');
+  });
+
+  test('null → "You\'re in flow. Let\'s go."', () => {
+    expect(formatCheckpointBody(null)).toBe("You're in flow. Let's go.");
+  });
+});
+
 describe('cancelSessionNotification', () => {
   test('dismisses the sticky notification', async () => {
     mockSchedule.mockResolvedValue('sticky-id');
@@ -92,6 +110,35 @@ describe('cancelSessionNotification', () => {
   test('is a no-op when nothing is active', async () => {
     await cancelSessionNotification();
     expect(mockDismiss).not.toHaveBeenCalled();
+  });
+});
+
+describe('formatPrePhaseBody', () => {
+  test('tracer bullet: with duration — contains begin time and end time', () => {
+    const now = new Date('2026-01-01T14:00:00').getTime();
+    const body = formatPrePhaseBody(1500, now);
+    expect(body).toMatch(/Task begins at \d+:\d{2} (AM|PM)/);
+    expect(body).toMatch(/Ends at \d+:\d{2} (AM|PM)/);
+  });
+
+  test('null duration — contains begin time but not "Ends at"', () => {
+    const now = new Date('2026-01-01T14:00:00').getTime();
+    const body = formatPrePhaseBody(null, now);
+    expect(body).toMatch(/Task begins at \d+:\d{2} (AM|PM)/);
+    expect(body).not.toContain('Ends at');
+  });
+
+  test('begin time is 2 minutes after now', () => {
+    const now = new Date('2026-01-01T14:00:00').getTime();
+    const body = formatPrePhaseBody(1500, now);
+    expect(body).toContain('2:02 PM');
+  });
+
+  test('end time is warm-up + session duration after now', () => {
+    // 14:00 + 2min warm-up + 25min session = 14:27
+    const now = new Date('2026-01-01T14:00:00').getTime();
+    const body = formatPrePhaseBody(1500, now);
+    expect(body).toContain('2:27 PM');
   });
 });
 

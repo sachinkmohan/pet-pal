@@ -1,5 +1,5 @@
 import { useFocusEffect, useRouter } from "expo-router";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Modal,
   Pressable,
@@ -16,6 +16,7 @@ import { useColorScheme } from "@/hooks/use-color-scheme";
 import { PetBloomColors } from "@/src/constants/Colors";
 import {
   buildRolling7Days,
+  calculateTaskCoins,
   filterForNewDay,
   processTaskInput,
   shouldCarryOver,
@@ -82,9 +83,18 @@ export default function TasksScreen() {
   const [editDetectedDuration, setEditDetectedDuration] = useState<
     number | null
   >(null);
+  const [coinReward, setCoinReward] = useState<number | null>(null);
 
   const inputRef = useRef<TextInput>(null);
   const editInputRef = useRef<TextInput>(null);
+
+  // ── Auto-dismiss coin reward pop-up after 1500ms ─────────────────────────────
+
+  useEffect(() => {
+    if (coinReward === null) return;
+    const id = setTimeout(() => setCoinReward(null), 1500);
+    return () => clearTimeout(id);
+  }, [coinReward]);
 
   // ── Load data on focus ──────────────────────────────────────────────────────
 
@@ -217,22 +227,16 @@ export default function TasksScreen() {
     setShowInput(false);
   }
 
-  // ── Toggle check-off ────────────────────────────────────────────────────────
+  // ── Toggle check-off (one-way: completing only) ─────────────────────────────
 
   async function handleToggleComplete(taskId: string) {
     const task = tasks.find((t) => t.id === taskId);
     if (!task) return;
+    if (task.completed) return; // tasks are one-way — no unchecking
 
     const now = new Date().toISOString();
-    const nowCompleted = !task.completed;
     const updated = tasks.map((t) =>
-      t.id !== taskId
-        ? t
-        : {
-            ...t,
-            completed: nowCompleted,
-            completedAt: nowCompleted ? now : null,
-          },
+      t.id !== taskId ? t : { ...t, completed: true, completedAt: now },
     );
     await setItem(STORAGE_KEYS.POCHI_TASKS, updated);
     setTasks(updated);
@@ -241,20 +245,15 @@ export default function TasksScreen() {
       (await getItem<{ completedAt: string }[]>(
         STORAGE_KEYS.POCHI_TASK_COMPLETIONS,
       )) ?? [];
-    let newCompletions: { completedAt: string }[];
-
-    if (nowCompleted) {
-      // Marking complete — log it
-      newCompletions = [...completions, { completedAt: now }];
-    } else {
-      // Unchecking — remove the matching entry by its stored completedAt timestamp
-      newCompletions = completions.filter(
-        (c) => c.completedAt !== task.completedAt,
-      );
-    }
-
+    const newCompletions = [...completions, { completedAt: now }];
     await setItem(STORAGE_KEYS.POCHI_TASK_COMPLETIONS, newCompletions);
     setRolling7(buildRolling7Days(newCompletions, new Date()));
+
+    // Award coins
+    const earned = calculateTaskCoins(task.durationSeconds);
+    const currentCoins = await getItem<number>(STORAGE_KEYS.COINS);
+    await setItem(STORAGE_KEYS.COINS, (currentCoins ?? 0) + earned);
+    setCoinReward(earned);
   }
 
   // ── Delete task ─────────────────────────────────────────────────────────────
@@ -718,6 +717,19 @@ export default function TasksScreen() {
         </View>
       </Modal>
 
+      {/* ── Coin reward pop-up ── */}
+      <Modal visible={coinReward !== null} transparent animationType="fade">
+        <View style={styles.coinBackdrop}>
+          <View style={[styles.coinCard, { backgroundColor: cardBg }]}>
+            <ThemedText style={styles.coinEmoji}>🪙</ThemedText>
+            <ThemedText style={styles.coinAmount}>+{coinReward}</ThemedText>
+            <ThemedText style={[styles.coinLabel, { color: textMuted }]}>
+              Task complete!
+            </ThemedText>
+          </View>
+        </View>
+      </Modal>
+
       {/* ── Onboarding overlay ── */}
       <Modal
         visible={onboardingStep !== null}
@@ -1032,5 +1044,31 @@ const styles = StyleSheet.create({
     color: PetBloomColors.white,
     fontWeight: "700",
     fontSize: 15,
+  },
+  // Coin reward pop-up
+  coinBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.35)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  coinCard: {
+    width: 200,
+    borderRadius: 20,
+    padding: 28,
+    alignItems: 'center',
+    gap: 8,
+  },
+  coinEmoji: {
+    fontSize: 48,
+    lineHeight: 56,
+  },
+  coinAmount: {
+    fontSize: 32,
+    fontWeight: '800',
+  },
+  coinLabel: {
+    fontSize: 14,
+    fontWeight: '500',
   },
 });
