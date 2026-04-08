@@ -31,13 +31,17 @@ export default function RootLayout() {
         if (!sessionStillRunning) {
           await Notifications.dismissNotificationAsync(response.notification.request.identifier).catch((e) => console.warn('Failed to dismiss session notification:', e));
         }
-        if (data.task?.taskName) {
+        const task = data.task;
+        const taskName: string | undefined = task?.taskName;
+        const launchId: string | undefined = task?.launchId;
+        const skipPrePhase: boolean | undefined = task?.skipPrePhase;
+        if (taskName && launchId && skipPrePhase !== undefined) {
           const params: Record<string, string> = {
-            launchId: data.task.launchId,
-            taskName: data.task.taskName,
-            skipPrePhase: String(data.task.skipPrePhase),
+            launchId,
+            taskName,
+            skipPrePhase: String(skipPrePhase),
           };
-          if (data.task.durationSeconds) params.durationSeconds = String(data.task.durationSeconds);
+          if (task.durationSeconds) params.durationSeconds = String(task.durationSeconds);
           router.navigate({ pathname: '/(tabs)/focus', params });
         } else {
           router.navigate('/(tabs)/focus');
