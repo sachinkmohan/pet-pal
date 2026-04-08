@@ -1,6 +1,7 @@
 import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
+  Alert,
   Modal,
   Pressable,
   ScrollView,
@@ -308,11 +309,27 @@ export default function TasksScreen() {
   // ── Play task ───────────────────────────────────────────────────────────────
 
   function handlePlay(task: Task) {
-    const params: Record<string, string> = { taskName: task.displayName };
-    if (task.durationSeconds !== null) {
-      params.durationSeconds = String(task.durationSeconds);
+    function launch(skipPrePhase: boolean) {
+      const params: Record<string, string> = {
+        launchId: Date.now().toString(),
+        taskName: task.displayName,
+        skipPrePhase: String(skipPrePhase),
+      };
+      if (task.durationSeconds !== null) {
+        params.durationSeconds = String(task.durationSeconds);
+      }
+      router.push({ pathname: "/(tabs)/focus", params });
     }
-    router.push({ pathname: "/(tabs)/focus", params });
+
+    Alert.alert(
+      task.displayName,
+      'How do you want to start?',
+      [
+        { text: 'Start now', onPress: () => launch(true) },
+        { text: '2-min warmup', onPress: () => launch(false) },
+        { text: 'Cancel', style: 'cancel' },
+      ],
+    );
   }
 
   // ── Tap task row ────────────────────────────────────────────────────────────

@@ -98,6 +98,7 @@ PetPal is a **virtual pet + focus app** for Android. Your pet Pochi's mood and g
 - [x] Daily quest system (1 quest/day, 5 types, resets at midnight)
 - [x] Coins 🪙 — soft currency earned from quests and task completions
 - [x] Tasks screen (PET-14) — task list with inline duration, 2-min pre-phase, coin rewards on check-off
+- [x] Optional pre-phase warm-up (PET-15) — action sheet lets user choose "Start now" or "2-min warmup"; bug fix for give-up → restart flow
 
 ---
 
@@ -936,7 +937,7 @@ Built after the Quest System. Journey tab replaced with Tasks tab. See `docs/tas
 - [x] Onboarding — 3-step inline guide on first use; re-accessible via `?` button
 
 **Focus session extension (2-minute pre-phase)**
-- [x] Launching a task from Tasks pushes focus.tsx with `taskName` + `durationSeconds` params
+- [x] Launching a task from Tasks pushes focus.tsx with `taskName` + `durationSeconds` + `skipPrePhase` params
 - [x] Pre-phase: 2-minute `CircularCountdown` with activation-energy quote before real session
 - [x] `showPrePhaseNotification` — sticky notification fired immediately: `"2-min warm-up started ⏱️ · Task begins at X:XX · Ends at Y:YY"`; stays in tray until session starts
 - [x] AppState listener — auto-transitions pre→session when app reopened after 2+ minutes
@@ -944,6 +945,20 @@ Built after the Quest System. Journey tab replaced with Tasks tab. See `docs/tas
 - [x] Tab bar hidden during pre-phase and active task session
 - [x] Task completion modal — shows task name, minutes focused, coin-earn teaser; navigates back to Tasks on dismiss
 - [x] Task sessions excluded from recents list; minutes still count toward `FOCUS_TIME_TODAY`
+
+**Optional pre-phase (PET-15)**
+- [x] `Alert.alert` in `handlePlay` — user chooses **Start now** (skipPrePhase) or **2-min warmup** before launching
+- [x] `skipPrePhase: 'true'` route param bypasses warm-up; `initialTaskPhase(skipPrePhase)` initialises `taskPhase` state
+- [x] `initialTaskPhase(skipPrePhase)` — pure helper in `TaskService.ts`; TDD'd
+- [x] `launchId: Date.now().toString()` added to every `launch()` call — unique per tap so effects re-fire when same task is replayed
+- [x] Auto-start via `resolveAutoStart` in `useFocusEffect` — all task params read from refs (`launchIdRef`, `skipPrePhaseRef`, `sessionLaunchIdRef`, `sessionEndTimeRef`) to avoid stale closures; `useFocusEffect` deps reduced to `[loadData]`
+
+**Notification → navigation fix (PET-15)**
+- [x] `TaskSessionContext` type added to `NotificationService.ts` — `{ launchId, taskName, durationSeconds, skipPrePhase }` embedded in `session_running` notification data
+- [x] `showSessionNotification` accepts optional `taskContext` param; stores it in `data.task`
+- [x] `_layout.tsx` notification tap handler reads `data.task`; navigates with task params when present so `isTaskMode` is preserved on notification tap
+- [x] `resolveAutoStart(launchId, sessionLaunchId, sessionEndTime, taskDurationSeconds, now) → AutoStartResult` — pure function in `TaskService.ts`; TDD'd with 5 tests; encapsulates `fresh` / `resume` / `none` decision
+- [x] `remainingSessionSeconds` used inside `resolveAutoStart` for resume seconds calculation
 
 **NotificationService additions (TDD)**
 - [x] `formatCheckpointBody(durationSeconds)` — `"Your Xm session begins now."` / `"You're in flow. Let's go."`
@@ -960,7 +975,11 @@ Built after the Quest System. Journey tab replaced with Tasks tab. See `docs/tas
 **Bug fixes**
 - [x] `CircularCountdown` key props (`"pre-phase"`, `"task-session"`, `"regular-session"`) — prevents React reconciling countdowns as the same instance across phase transitions
 - [x] Stale closure fix — `handleStart`/`handleStartOpenFlow` now read `machineRef.current.getState()` instead of React state
-- [x] Float minutes — `Math.round(totalSecs / 60)` in `handleStart`; `Math.round` in Home screen display
+- [x] Float minutes — `Math.round(totalSecs / 60)` in `handleStart`; `minutesToHHMM` rounds input before splitting; fixes personal best shown as float on Home screen
+- [x] Give-up → restart not working (round 2) — stale `launchId` in `useFocusEffect` closure caused `isSameLaunch=true` for new launches; fixed via `launchIdRef` + `resolveAutoStart`
+- [x] Task countdown showing stale duration after give-up — `activeSessionDuration` not updated in `handleStart`; fixed by calling `setActiveSessionDuration(totalSecs)` inside `handleStart`
+- [x] Step Away slider inheriting task duration — `setDuration(overrideSecs / 60)` now guarded with `!isTaskMode`
+- [x] `sessionLaunchIdRef` set from stale closure; changed to `sessionLaunchIdRef.current = launchIdRef.current`
 
 ---
 

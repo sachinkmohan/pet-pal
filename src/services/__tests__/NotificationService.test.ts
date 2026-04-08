@@ -1,5 +1,5 @@
 import * as Notifications from 'expo-notifications';
-import { showSessionNotification, cancelSessionNotification, formatEndTime, formatCheckpointBody, formatPrePhaseBody } from '../NotificationService';
+import { showSessionNotification, cancelSessionNotification, formatEndTime, formatCheckpointBody, formatPrePhaseBody, type TaskSessionContext } from '../NotificationService';
 
 jest.mock('expo-notifications');
 
@@ -78,6 +78,26 @@ describe('notification data', () => {
     await showSessionNotification('Pochi', 1500, '🐥', now);
     const [request] = mockSchedule.mock.calls[0];
     expect(request.content.data.endsAt).toBe(now + 1500 * 1000);
+  });
+
+  test('tracer bullet: task context stored in data.task when provided', async () => {
+    const now = new Date('2026-01-01T14:00:00').getTime();
+    const taskContext: TaskSessionContext = {
+      launchId: 'launch-1',
+      taskName: 'Review PR',
+      durationSeconds: 1500,
+      skipPrePhase: true,
+    };
+    await showSessionNotification('Pochi', 1500, '🐥', now, taskContext);
+    const [request] = mockSchedule.mock.calls[0];
+    expect(request.content.data.task).toEqual(taskContext);
+  });
+
+  test('data.task is null when no task context provided', async () => {
+    const now = new Date('2026-01-01T14:00:00').getTime();
+    await showSessionNotification('Pochi', 1500, '🐥', now);
+    const [request] = mockSchedule.mock.calls[0];
+    expect(request.content.data.task).toBeNull();
   });
 });
 

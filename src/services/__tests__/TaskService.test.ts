@@ -8,8 +8,11 @@ import {
   processTaskInput,
   calculateTaskCoins,
   adjustSessionDuration,
+  initialTaskPhase,
+  remainingSessionSeconds,
+  resolveAutoStart,
   type Task,
-} from '../TaskService';
+} from '@/src/services/TaskService';
 
 // ── parseDuration ─────────────────────────────────────────────────────────────
 
@@ -351,5 +354,75 @@ describe('adjustSessionDuration', () => {
   test('fractional overdue rounds to nearest second', () => {
     // 90_500ms → rounds to 91s → 600 - 91 = 509
     expect(adjustSessionDuration(600, 90_500)).toBe(509);
+  });
+});
+
+// ── remainingSessionSeconds ────────────────────────────────────────────────────
+
+describe('remainingSessionSeconds', () => {
+  test('tracer bullet: sessionEndTime=0 → returns full taskDurationSeconds (not yet started)', () => {
+    expect(remainingSessionSeconds(0, 1500, Date.now())).toBe(1500);
+  });
+
+  test('endTime 10 min in the future → returns 600s', () => {
+    const now = 1_000_000_000;
+    expect(remainingSessionSeconds(now + 600_000, 1500, now)).toBe(600);
+  });
+
+  test('endTime already elapsed → floors at 5s', () => {
+    const now = 1_000_000_000;
+    expect(remainingSessionSeconds(now - 30_000, 1500, now)).toBe(5);
+  });
+
+  test('negative sessionEndTime treated as sentinel → returns full duration', () => {
+    expect(remainingSessionSeconds(-1, 900, Date.now())).toBe(900);
+  });
+});
+
+// ── initialTaskPhase ───────────────────────────────────────────────────────────
+
+describe('initialTaskPhase', () => {
+  test('tracer bullet: false → "pre" (show warm-up countdown)', () => {
+    expect(initialTaskPhase(false)).toBe('pre');
+  });
+
+  test('true → "session" (skip warm-up, jump straight to session)', () => {
+    expect(initialTaskPhase(true)).toBe('session');
+  });
+});
+
+// ── resolveAutoStart ───────────────────────────────────────────────────────────
+
+describe('resolveAutoStart', () => {
+  const NOW = 1_000_000_000;
+  const DURATION = 1500;
+
+  test('tracer bullet: different launchId → action fresh (new launch from Tasks)', () => {
+    const result = resolveAutoStart('new-launch', 'old-launch', 0, DURATION, NOW);
+    expect(result.action).toBe('fresh');
+  });
+
+  test('same launchId + sessionEndTime > 0 → action resume with remaining seconds', () => {
+    const endTime = NOW + 600_000; // 10 min left
+    const result = resolveAutoStart('launch-1', 'launch-1', endTime, DURATION, NOW);
+    expect(result.action).toBe('resume');
+    if (result.action === 'resume') expect(result.seconds).toBe(600);
+  });
+
+  test('same launchId + sessionEndTime = 0 → action none (intentional give-up, do not restart)', () => {
+    const result = resolveAutoStart('launch-1', 'launch-1', 0, DURATION, NOW);
+    expect(result.action).toBe('none');
+  });
+
+  test('null launchId → action none (screen not in task mode)', () => {
+    const result = resolveAutoStart(null, null, 0, DURATION, NOW);
+    expect(result.action).toBe('none');
+  });
+
+  test('resume seconds floor at 5 when endTime already elapsed', () => {
+    const endTime = NOW - 30_000; // already past
+    const result = resolveAutoStart('launch-1', 'launch-1', endTime, DURATION, NOW);
+    expect(result.action).toBe('resume');
+    if (result.action === 'resume') expect(result.seconds).toBe(5);
   });
 });

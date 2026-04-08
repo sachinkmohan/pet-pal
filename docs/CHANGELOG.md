@@ -5,6 +5,30 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [Unreleased] — branch: PET-15
+
+### Added
+- **Optional pre-phase warm-up** — tapping play on a task now shows an action sheet: **Start now** (jumps straight into the session) or **2-min warmup** (existing behaviour)
+  - `skipPrePhase` route param (`'true'`/`'false'`) passed from `tasks.tsx` to `focus.tsx`
+  - `initialTaskPhase(skipPrePhase)` — pure helper in `TaskService.ts`; TDD'd with 2 tests
+- **`TaskSessionContext`** type in `NotificationService.ts` — embeds `{ launchId, taskName, durationSeconds, skipPrePhase }` in the `session_running` notification data payload so `_layout.tsx` can navigate back with task params preserved
+- **`resolveAutoStart(launchId, sessionLaunchId, sessionEndTime, taskDurationSeconds, now)`** — pure function in `TaskService.ts`; encapsulates the give-up vs resume vs fresh-launch decision; TDD'd with 5 tests
+
+### Fixed
+- **Give-up → restart not working** — after giving up a task session and navigating back to Tasks, tapping play again did nothing because the mount-only `useEffect([], [])` auto-start never re-fires on tab re-focus; fixed by also running the auto-start logic inside `useFocusEffect` (guarded by `machineRef.current?.getState() === 'idle'` to prevent double-start on first mount)
+- **Stale phase/notification on repeated same-task launch** — replaying the same task left `taskPhase` and `prePhaseEndTimeRef` from the previous run because the reset and notification effects keyed on `taskName`, which doesn't change between launches of the same task; fixed by adding `launchId: Date.now().toString()` to every `launch()` call in `tasks.tsx` and using `launchId` as the effect dependency instead of `taskName`
+- **Task timer reset to full duration on notification tap** — tapping the sticky session notification called `router.navigate('/(tabs)/focus')` without task params, clearing `isTaskMode` and triggering a full-duration restart; fixed by embedding `TaskSessionContext` in notification data and navigating with those params in `_layout.tsx`
+- **Task timer not restarting after give-up + new play** — stale `launchId` captured in `useFocusEffect` closure (not in deps) caused `isSameLaunch=true` for new launches, hitting the "intentional give-up" no-op branch; fixed by introducing `launchIdRef` / `skipPrePhaseRef` (synced every render) and routing all auto-start decisions through `resolveAutoStart` via refs; `useFocusEffect` deps reduced to `[loadData]`
+- **Task countdown showing stale duration after give-up** — `activeSessionDuration` was never updated in `handleStart`, so restarting from the setup view showed the previous session's duration in the task countdown; fixed by calling `setActiveSessionDuration(totalSecs)` inside `handleStart`
+- **Step Away slider inheriting task duration** — `handleStart(overrideSecs)` called `setDuration(overrideSecs / 60)` unconditionally; fixed with `!isTaskMode` guard so task sessions never overwrite the user's Step Away slider value
+- **`sessionLaunchIdRef` set from stale closure `launchId`** — changed to `sessionLaunchIdRef.current = launchIdRef.current` to always record the current launch identity
+- **Personal best displayed as float** — `minutesToHHMM` used raw `totalMinutes % 60` which produced fractional minutes when `FOCUS_TIME_TODAY` accumulated a float; fixed by rounding to nearest integer before splitting into hours/mins
+
+### Changed
+- `TaskService.test.ts` import updated from relative path (`'../TaskService'`) to repo alias (`'@/src/services/TaskService'`) to match the shared import contract
+
+---
+
 ## [Unreleased] — branch: PET-14
 
 ### Added

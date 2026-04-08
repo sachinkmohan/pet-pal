@@ -28,11 +28,19 @@ export function formatEndTime(durationSeconds: number, now = Date.now()): string
   return `${h}:${m} ${ampm}`;
 }
 
+export type TaskSessionContext = {
+  launchId: string;
+  taskName: string;
+  durationSeconds: number;
+  skipPrePhase: boolean;
+};
+
 export async function showSessionNotification(
   petName: string,
   durationSeconds: number,
   petEmoji: string,
   now = Date.now(),
+  taskContext?: TaskSessionContext,
 ): Promise<void> {
   const { status } = await Notifications.requestPermissionsAsync();
   if (status !== 'granted') return;
@@ -46,7 +54,11 @@ export async function showSessionNotification(
       body: `${durationMins} min · Come back at ${formatEndTime(durationSeconds, now)}`,
       sticky: true,
       autoDismiss: false,
-      data: { type: 'session_running', endsAt: now + durationSeconds * 1000 },
+      data: {
+        type: 'session_running',
+        endsAt: now + durationSeconds * 1000,
+        task: taskContext ?? null,
+      },
     },
     trigger: null,
   });
