@@ -89,6 +89,16 @@ export function calculateTaskCoins(durationSeconds: number | null): number {
 }
 
 /**
+ * Returns the focus minutes to credit when a task is checked off.
+ * Mirrors the conversion used in focus.tsx (Math.round(totalSecs / 60)).
+ * Returns 0 for tasks with no duration.
+ */
+export function focusMinutesFromTask(durationSeconds: number | null): number {
+  if (durationSeconds === null) return 0;
+  return Math.round(durationSeconds / 60);
+}
+
+/**
  * Adjusts the session duration to account for time already elapsed while
  * the pre-phase countdown was overdue (user did not start on time).
  * Returns durationSeconds minus overdueMs converted to seconds, floored at 5s.
@@ -96,6 +106,19 @@ export function calculateTaskCoins(durationSeconds: number | null): number {
 export function adjustSessionDuration(durationSeconds: number, overdueMs: number): number {
   const adjusted = durationSeconds - Math.round(overdueMs / 1000);
   return Math.max(5, adjusted);
+}
+
+/**
+ * Calculates remaining session seconds after the 2-min pre-phase warmup
+ * has elapsed while the app was in the background.
+ *
+ * Unlike adjustSessionDuration, this returns 0 when the task duration has
+ * fully elapsed — signalling that the session should complete immediately
+ * (skip the timer entirely, credit full task duration).
+ */
+export function postWarmupResumeSeconds(taskDurationSeconds: number, overdueMs: number): number {
+  const remaining = taskDurationSeconds - Math.round(overdueMs / 1000);
+  return Math.max(0, remaining);
 }
 
 export function buildRolling7Days(

@@ -11,6 +11,8 @@ import {
   initialTaskPhase,
   remainingSessionSeconds,
   resolveAutoStart,
+  focusMinutesFromTask,
+  postWarmupResumeSeconds,
   type Task,
 } from '@/src/services/TaskService';
 
@@ -336,6 +338,26 @@ describe('calculateTaskCoins', () => {
   });
 });
 
+// ── focusMinutesFromTask ──────────────────────────────────────────────────────
+
+describe('focusMinutesFromTask', () => {
+  test('tracer bullet: 1500s (25m) → 25 minutes', () => {
+    expect(focusMinutesFromTask(1500)).toBe(25);
+  });
+
+  test('3600s (60m) → 60 minutes', () => {
+    expect(focusMinutesFromTask(3600)).toBe(60);
+  });
+
+  test('null (no duration) → 0 minutes', () => {
+    expect(focusMinutesFromTask(null)).toBe(0);
+  });
+
+  test('90s (rounds to 2m)', () => {
+    expect(focusMinutesFromTask(90)).toBe(2);
+  });
+});
+
 // ── adjustSessionDuration ─────────────────────────────────────────────────────
 
 describe('adjustSessionDuration', () => {
@@ -388,6 +410,31 @@ describe('initialTaskPhase', () => {
 
   test('true → "session" (skip warm-up, jump straight to session)', () => {
     expect(initialTaskPhase(true)).toBe('session');
+  });
+});
+
+// ── postWarmupResumeSeconds ────────────────────────────────────────────────────
+
+describe('postWarmupResumeSeconds', () => {
+  test('tracer bullet: 300s overdue on 1500s task → 1200s remaining', () => {
+    expect(postWarmupResumeSeconds(1500, 300_000)).toBe(1200);
+  });
+
+  test('overdue equals task duration → 0 (complete immediately)', () => {
+    expect(postWarmupResumeSeconds(1500, 1_500_000)).toBe(0);
+  });
+
+  test('overdue exceeds task duration → 0 (complete immediately)', () => {
+    expect(postWarmupResumeSeconds(1500, 2_000_000)).toBe(0);
+  });
+
+  test('no overdue → full task duration returned', () => {
+    expect(postWarmupResumeSeconds(1500, 0)).toBe(1500);
+  });
+
+  test('fractional ms rounds to nearest second', () => {
+    // 500ms overdue → rounds to 1s → 1500 - 1 = 1499
+    expect(postWarmupResumeSeconds(1500, 500)).toBe(1499);
   });
 });
 
