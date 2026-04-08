@@ -491,7 +491,7 @@ export default function TasksScreen() {
                       >
                         {task.displayName}
                       </ThemedText>
-                      {task.durationSeconds !== null && !task.completed && (
+                      {task.durationSeconds !== null && (
                         <View style={[styles.durationBadge, { marginLeft: 6 }]}>
                           <ThemedText style={styles.durationBadgeText}>
                             {formatDurationBadge(task.durationSeconds)}
