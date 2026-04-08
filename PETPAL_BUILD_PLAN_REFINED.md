@@ -983,6 +983,24 @@ Built after the Quest System. Journey tab replaced with Tasks tab. See `docs/tas
 
 ---
 
+### Unplanned — Task Session Stats & Auto-Complete (PET-16, TDD)
+
+**TaskService.ts additions (TDD)**
+- [x] `focusMinutesFromTask(durationSeconds)` — `Math.round(durationSeconds / 60)`; null → 0; used when task check-off updates `FOCUS_TIME_TODAY`; 4 TDD tests
+- [x] `postWarmupResumeSeconds(taskDurationSeconds, overdueMs)` — `max(0, taskDur - round(overdueMs/1000))`; returns 0 when task fully elapsed in background (unlike `adjustSessionDuration` which floors at 5); 5 TDD tests
+
+**`tasks.tsx` fixes**
+- [x] `handlePlay` passes `taskId: task.id` as a route param so `focus.tsx` can identify which task to auto-complete
+- [x] Duration badge remains visible on completed tasks — removed `!task.completed` guard from badge render condition
+
+**`focus.tsx` fixes**
+- [x] Reads `taskId` from `useLocalSearchParams`; keeps `taskIdRef` in sync every render
+- [x] `handleSaveSession` auto-completes the task after saving session data: marks `completed: true` in `POCHI_TASKS`, appends to `POCHI_TASK_COMPLETIONS`, awards `calculateTaskCoins(taskDurationSeconds)` coins — prevents double-counting when user also taps the checkbox
+- [x] AppState listener uses `postWarmupResumeSeconds` instead of `adjustSessionDuration`; when `resumeSeconds === 0`, immediately calls `machine.startSession()` + `machine.timerComplete()` with `sessionDurationRef` set to full task minutes — fixes 5-second-countdown + "0 min" bug when app is backgrounded past warmup + task end time
+- [x] Completion modal teaser updated to **"Tap below to earn N coins 🪙"** — was "Mark it complete to earn N coins" which implied a separate checkbox step
+
+---
+
 ### Phase 7 — Polish & Ship (3-4 sessions)
 
 **Session 23: Visual Polish**
