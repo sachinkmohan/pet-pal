@@ -123,3 +123,11 @@ export function buildRolling7Days(
 
   return buckets;
 }
+
+/**
+ * Returns the initial task phase based on whether the pre-phase warm-up is skipped.
+ * Used by the Focus screen to initialise state when launched from the Tasks screen.
+ */
+export function initialTaskPhase(skipPrePhase: boolean): 'pre' | 'session' {
+  return skipPrePhase ? 'session' : 'pre';
+}

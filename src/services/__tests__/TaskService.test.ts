@@ -8,6 +8,7 @@ import {
   processTaskInput,
   calculateTaskCoins,
   adjustSessionDuration,
+  initialTaskPhase,
   type Task,
 } from '../TaskService';
 
@@ -351,5 +352,17 @@ describe('adjustSessionDuration', () => {
   test('fractional overdue rounds to nearest second', () => {
     // 90_500ms → rounds to 91s → 600 - 91 = 509
     expect(adjustSessionDuration(600, 90_500)).toBe(509);
+  });
+});
+
+// ── initialTaskPhase ───────────────────────────────────────────────────────────
+
+describe('initialTaskPhase', () => {
+  test('tracer bullet: false → "pre" (show warm-up countdown)', () => {
+    expect(initialTaskPhase(false)).toBe('pre');
+  });
+
+  test('true → "session" (skip warm-up, jump straight to session)', () => {
+    expect(initialTaskPhase(true)).toBe('session');
   });
 });

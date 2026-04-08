@@ -27,7 +27,7 @@ import { getItem, setItem } from "@/src/storage/AppStorage";
 import { STORAGE_KEYS } from "@/src/storage/keys";
 import { updateStreakAfterSession } from "@/src/services/StreakService";
 import { recordQuestEvent } from "@/src/services/QuestStorage";
-import { adjustSessionDuration, calculateTaskCoins } from "@/src/services/TaskService";
+import { adjustSessionDuration, calculateTaskCoins, initialTaskPhase } from "@/src/services/TaskService";
 import { addRecentDuration } from "@/src/storage/recentDurations";
 import { resetDailyDataIfNeeded } from "@/src/storage/seedData";
 import { formatDuration } from "@/src/utils/durationPicker";
@@ -37,14 +37,15 @@ export default function FocusScreen() {
   const navigation = useNavigation();
 
   // Task params (when launched from Tasks screen)
-  const params = useLocalSearchParams<{ taskName?: string; durationSeconds?: string }>();
+  const params = useLocalSearchParams<{ taskName?: string; durationSeconds?: string; skipPrePhase?: string }>();
   const taskName = params.taskName ?? null;
   const taskDurationSeconds = params.durationSeconds ? parseInt(params.durationSeconds, 10) : null;
+  const skipPrePhase = params.skipPrePhase === 'true';
   const isTaskMode = taskName !== null;
 
   // Pre-phase: 2-minute countdown before the real session (task mode only)
   // 'pre' → 2-min countdown; 'session' → real session
-  const [taskPhase, setTaskPhase] = useState<'pre' | 'session'>('pre');
+  const [taskPhase, setTaskPhase] = useState<'pre' | 'session'>(initialTaskPhase(skipPrePhase));
   const [activeSessionDuration, setActiveSessionDuration] = useState(taskDurationSeconds ?? 0);
 
   // Setup state
@@ -96,16 +97,27 @@ export default function FocusScreen() {
   useFocusEffect(
     useCallback(() => {
       loadData();
+      // Re-start task session on re-focus when pre-phase was skipped and machine is idle.
+      // Handles the case where the user gave up, went back to Tasks, and tapped play again —
+      // the screen is already mounted so the mount-only auto-start effect doesn't re-fire.
+      if (isTaskMode && skipPrePhase && machineRef.current?.getState() === 'idle') {
+        if (taskDurationSeconds !== null) {
+          setActiveSessionDuration(taskDurationSeconds);
+          handleStart(taskDurationSeconds);
+        } else {
+          handleStartOpenFlow();
+        }
+      }
       return () => {
         machineRef.current?.giveUp();
       };
-    }, [loadData]),
+    }, [loadData, isTaskMode, skipPrePhase, taskDurationSeconds]),
   );
 
-  // Reset pre-phase when a new task is pushed (taskName changes)
+  // Reset phase when a new task is pushed (taskName changes)
   useEffect(() => {
-    if (isTaskMode) setTaskPhase('pre');
-  }, [isTaskMode, taskName]);
+    if (isTaskMode) setTaskPhase(initialTaskPhase(skipPrePhase));
+  }, [isTaskMode, taskName, skipPrePhase]);
 
   // Fire pre-phase notification and record end time when warm-up starts
   useEffect(() => {
@@ -139,6 +151,18 @@ export default function FocusScreen() {
       machineRef.current = null;
     };
   }, []);
+
+  // Auto-start session immediately when pre-phase is skipped
+  useEffect(() => {
+    if (!isTaskMode || !skipPrePhase) return;
+    if (taskDurationSeconds !== null) {
+      setActiveSessionDuration(taskDurationSeconds);
+      handleStart(taskDurationSeconds);
+    } else {
+      handleStartOpenFlow();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // intentionally run once on mount only
 
   // Auto-transition from pre-phase to session when returning to app after warm-up has elapsed
   useEffect(() => {
