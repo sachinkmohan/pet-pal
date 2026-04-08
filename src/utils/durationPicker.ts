@@ -2,8 +2,9 @@ export const DURATION_MIN = 1;
 export const DURATION_MAX = 355; // 5h 55m
 
 export function minutesToHHMM(totalMinutes: number): { hours: number; mins: number } {
-  const hours = Math.floor(totalMinutes / 60);
-  const mins = totalMinutes % 60;
+  const total = Math.round(totalMinutes);
+  const hours = Math.floor(total / 60);
+  const mins = total % 60;
   return { hours, mins };
 }
 
