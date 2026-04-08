@@ -110,7 +110,7 @@ Lowers activation energy. The user does 2 minutes of starting the task before th
 
 ### Flow
 
-```
+```text
 Task tapped → pre-phase starts (2-min CircularCountdown)
            → sticky notification fired immediately
            → 2 minutes elapse (or app resumed after 2+ min)

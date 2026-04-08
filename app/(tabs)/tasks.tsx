@@ -45,6 +45,9 @@ const ONBOARDING_STEPS = [
   },
 ];
 
+// ── In-flight guard — prevents double coin-award on rapid taps ───────────────
+const inFlight = new Set<string>();
+
 // ── Day labels for rolling 7-day bar ─────────────────────────────────────────
 
 function getDayLabels(now: Date): string[] {
@@ -233,13 +236,16 @@ export default function TasksScreen() {
     const task = tasks.find((t) => t.id === taskId);
     if (!task) return;
     if (task.completed) return; // tasks are one-way — no unchecking
+    if (inFlight.has(taskId)) return;
+    inFlight.add(taskId);
 
+    try {
     const now = new Date().toISOString();
     const updated = tasks.map((t) =>
       t.id !== taskId ? t : { ...t, completed: true, completedAt: now },
     );
+    setTasks(updated); // optimistic update before first await
     await setItem(STORAGE_KEYS.POCHI_TASKS, updated);
-    setTasks(updated);
 
     const completions =
       (await getItem<{ completedAt: string }[]>(
@@ -254,6 +260,9 @@ export default function TasksScreen() {
     const currentCoins = await getItem<number>(STORAGE_KEYS.COINS);
     await setItem(STORAGE_KEYS.COINS, (currentCoins ?? 0) + earned);
     setCoinReward(earned);
+    } finally {
+      inFlight.delete(taskId);
+    }
   }
 
   // ── Delete task ─────────────────────────────────────────────────────────────
@@ -397,6 +406,9 @@ export default function TasksScreen() {
                     ]}
                     onPress={() => handleToggleComplete(task.id)}
                     hitSlop={8}
+                    accessibilityRole="checkbox"
+                    accessibilityState={{ checked: task.completed }}
+                    accessibilityLabel={`Mark ${task.displayName} complete`}
                   >
                     {task.completed && (
                       <ThemedText style={styles.checkmark}>✓</ThemedText>
@@ -466,6 +478,8 @@ export default function TasksScreen() {
                       ]}
                       onPress={() => handlePlay(task)}
                       hitSlop={8}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Start ${task.displayName}`}
                     >
                       <ThemedText
                         style={[
@@ -487,6 +501,8 @@ export default function TasksScreen() {
                       ]}
                       onPress={() => handleSaveEdit(task.id)}
                       hitSlop={8}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Save edit for ${task.displayName}`}
                     >
                       <ThemedText
                         style={[

@@ -8,11 +8,6 @@ export type Task = {
   createdAt: string;
 };
 
-// Matches duration at the END of a string: e.g. "2h 30m", "1h", "45m", "1h30m"
-const DURATION_PATTERN = /\s+(\d+h)?\s*(\d+m)?\s*$/i;
-// More precise: requires at least one of h or m to be present and non-zero
-const DURATION_END = /\s+((?:\d+h)?\s*(?:\d+m)?)$/i;
-
 export function parseDuration(text: string): number | null {
   // Match duration at end of string, preceded by start-of-string or whitespace
   // Supports: 1h, 45m, 2h 30m, 1h30m

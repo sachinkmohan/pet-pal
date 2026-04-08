@@ -18,6 +18,7 @@ Notifications.setNotificationHandler({
 
 let activeNotificationId: string | null = null;
 let activePrePhaseNotificationId: string | null = null;
+let prePhaseToken = 0;
 
 export function formatEndTime(durationSeconds: number, now = Date.now()): string {
   const end = new Date(now + durationSeconds * 1000);
@@ -86,7 +87,8 @@ export async function showPrePhaseNotification(
   const { status } = await Notifications.requestPermissionsAsync();
   if (status !== 'granted') return;
   await cancelPrePhaseNotification();
-  activePrePhaseNotificationId = await Notifications.scheduleNotificationAsync({
+  const token = ++prePhaseToken;
+  const id = await Notifications.scheduleNotificationAsync({
     content: {
       title: '2-min warm-up started ⏱️',
       body: formatPrePhaseBody(taskDurationSeconds, now),
@@ -96,9 +98,16 @@ export async function showPrePhaseNotification(
     },
     trigger: null,
   });
+  if (prePhaseToken === token) {
+    activePrePhaseNotificationId = id;
+  } else {
+    // A newer cancel/show ran while we were awaiting — dismiss this stale notification
+    await Notifications.dismissNotificationAsync(id);
+  }
 }
 
 export async function cancelPrePhaseNotification(): Promise<void> {
+  prePhaseToken++;
   if (activePrePhaseNotificationId === null) return;
   await Notifications.dismissNotificationAsync(activePrePhaseNotificationId);
   activePrePhaseNotificationId = null;

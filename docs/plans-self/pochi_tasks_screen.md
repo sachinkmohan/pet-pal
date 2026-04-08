@@ -22,7 +22,7 @@ This screen is the home of intentional, low-pressure daily planning. The 3-task 
 ## User Flow
 
 ### Adding a Task
-```
+```text
 User opens Tasks screen
   → Taps "+ Add Task" (only visible if < 3 tasks exist)
   → Text input appears inline
@@ -35,7 +35,7 @@ User opens Tasks screen
 ```
 
 ### Starting a Task
-```
+```text
 User taps Play ▶ on a task
   → Navigates to Timer screen
   → Timer screen shows:
@@ -52,19 +52,19 @@ User taps Play ▶ on a task
 ```
 
 ### Completing a Task
-```
+```text
 User returns to Tasks screen after session
   → Task shows strikethrough + muted style
   → Checkbox on the left is ticked
-  → Delete button still visible on the right
+  → Edit/Delete actions revealed by tapping the row
   → Task count in Insights is incremented
   → Task stays visible until midnight, then auto-removed
 ```
 
 ### Deleting a Task
-```
-Delete button (🗑) visible at all times regardless of task state
-  → Tap delete → task removed immediately
+```text
+Tap task row → Edit / Delete actions revealed inline
+  → Tap Delete → task removed immediately
   → If task count was at 3, "+ Add Task" becomes visible again
   → No confirmation prompt (low-stakes, MVP)
 ```
@@ -121,7 +121,7 @@ On app open, check if the last session date (stored in AsyncStorage) is before t
 - **Completed tasks** → silently removed, no prompt
 - **Incomplete tasks** → prompt shown before the Tasks screen loads:
 
-```
+```text
 ╔══════════════════════════════════╗
 ║  You have tasks from yesterday   ║
 ║                                  ║
@@ -137,14 +137,14 @@ On app open, check if the last session date (stored in AsyncStorage) is before t
 
 ### AsyncStorage Keys
 
-```js
+```text
 'pochi_tasks'           // Array of task objects
 'pochi_tasks_last_date' // ISO date string of last active session
 ```
 
 ### Task Object Shape
 
-```js
+```ts
 {
   id: string,           // uuid
   text: string,         // raw input text e.g. "Deep work 2h 30m"
@@ -169,10 +169,10 @@ When launched from a task, the Timer screen receives:
 | No duration | 2-min countdown → checkpoint → open flow state |
 | With duration (e.g. 10m) | 2-min countdown → checkpoint → duration countdown → session ends |
 | User taps "I'm Done" at checkpoint | Session logged as micro (2 min), task NOT auto-checked |
-| User completes full duration | Session ends, task auto-checked off |
+| User completes full duration | Session ends, user manually checks off task to earn coins |
 | User returns early from flow | Session logged, task NOT auto-checked (user checks manually) |
 
-> Auto-check only triggers on full duration completion. All other cases require manual check-off by the user.
+> Tasks are always checked off manually. Auto-check is not implemented — the user taps the checkbox to earn coins and mark the task done.
 
 ---
 
@@ -181,7 +181,7 @@ When launched from a task, the Timer screen receives:
 Shown **once** on first visit to the Tasks screen. A 3-step tooltip/coach mark overlay.
 
 ### Step 1 — Adding a task with duration
-```
+```text
 💡 "Add up to 3 tasks for today.
     Include a duration like '10m' or '2h 30m'
     and Pochi will time your session automatically."
@@ -190,7 +190,7 @@ Shown **once** on first visit to the Tasks screen. A 3-step tooltip/coach mark o
 ```
 
 ### Step 2 — Starting a session
-```
+```text
 ▶  "Tap the play button to start a focus session.
     You'll begin with just 2 minutes — no pressure.
     Pochi will check in and ask if you want to keep going."
@@ -199,7 +199,7 @@ Shown **once** on first visit to the Tasks screen. A 3-step tooltip/coach mark o
 ```
 
 ### Step 3 — Completing and managing tasks
-```
+```text
 ✓  "Tap the circle to check off a task when you're done.
     Use the 🗑 button to delete any task at any time.
     Completed tasks are cleared at midnight automatically."
@@ -234,7 +234,7 @@ Insights screen queries this array and filters by date range. No backend require
 
 ### Insights Display (suggestion)
 
-```
+```text
 Tasks This Week
 ━━━━━━━━━━━━━━━━━━━━━━
 Today          2 / 3
@@ -247,7 +247,7 @@ Last week       8
 
 ## Task Screen UI Layout
 
-```
+```text
 ┌─────────────────────────────────┐
 │  Today's Tasks              [?] │  ← onboarding replay button
 ├─────────────────────────────────┤
@@ -263,7 +263,7 @@ Last week       8
 - `✓` = checked (strikethrough style, muted colour)
 - Duration badge shown inline if parsed
 - `▶` play button — hidden on completed tasks
-- `🗑` delete button — always visible
+- Edit/Delete — revealed by tapping the task row (not always visible)
 
 ---
 
