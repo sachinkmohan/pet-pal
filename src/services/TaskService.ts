@@ -131,3 +131,49 @@ export function buildRolling7Days(
 export function initialTaskPhase(skipPrePhase: boolean): 'pre' | 'session' {
   return skipPrePhase ? 'session' : 'pre';
 }
+
+/**
+ * Calculates the remaining seconds for a session that was interrupted by navigation.
+ * Returns `taskDurationSeconds` when `sessionEndTime <= 0` (sentinel: not started or
+ * intentionally reset via give-up). Otherwise returns max(5, round((endTime - now) / 1000)).
+ */
+export function remainingSessionSeconds(
+  sessionEndTime: number,
+  taskDurationSeconds: number,
+  now: number,
+): number {
+  if (sessionEndTime <= 0) return taskDurationSeconds;
+  return Math.max(5, Math.round((sessionEndTime - now) / 1000));
+}
+
+export type AutoStartResult =
+  | { action: 'none' }
+  | { action: 'fresh' }
+  | { action: 'resume'; seconds: number };
+
+/**
+ * Determines whether to auto-start a task session when focus screen regains focus.
+ *
+ * - 'fresh':  different launchId → new launch from Tasks, start at full taskDurationSeconds
+ * - 'resume': same launchId + sessionEndTime > 0 → navigation interrupted an active session,
+ *             resume with the calculated remaining seconds
+ * - 'none':   same launchId + sessionEndTime = 0 (intentional give-up) OR null launchId
+ *
+ * Always call this via refs so the useFocusEffect closure always reads current values.
+ */
+export function resolveAutoStart(
+  launchId: string | null,
+  sessionLaunchId: string | null,
+  sessionEndTime: number,
+  taskDurationSeconds: number,
+  now: number,
+): AutoStartResult {
+  if (launchId === null) return { action: 'none' };
+  if (launchId === sessionLaunchId) {
+    if (sessionEndTime > 0) {
+      return { action: 'resume', seconds: remainingSessionSeconds(sessionEndTime, taskDurationSeconds, now) };
+    }
+    return { action: 'none' };
+  }
+  return { action: 'fresh' };
+}

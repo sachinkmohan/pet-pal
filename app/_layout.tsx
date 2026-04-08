@@ -25,13 +25,23 @@ export default function RootLayout() {
   // Handle session notification tap: navigate to focus tab, dismiss only if session has elapsed
   useEffect(() => {
     const sub = Notifications.addNotificationResponseReceivedListener(async (response) => {
-      const data = response.notification.request.content.data;
+      const data = response.notification.request.content.data as Record<string, any>;
       if (data?.type === 'session_running') {
         const sessionStillRunning = typeof data.endsAt === 'number' && Date.now() < data.endsAt;
         if (!sessionStillRunning) {
           await Notifications.dismissNotificationAsync(response.notification.request.identifier).catch((e) => console.warn('Failed to dismiss session notification:', e));
         }
-        router.navigate('/(tabs)/focus');
+        if (data.task?.taskName) {
+          const params: Record<string, string> = {
+            launchId: data.task.launchId,
+            taskName: data.task.taskName,
+            skipPrePhase: String(data.task.skipPrePhase),
+          };
+          if (data.task.durationSeconds) params.durationSeconds = String(data.task.durationSeconds);
+          router.navigate({ pathname: '/(tabs)/focus', params });
+        } else {
+          router.navigate('/(tabs)/focus');
+        }
       }
     });
     return () => sub.remove();

@@ -311,6 +311,7 @@ export default function TasksScreen() {
   function handlePlay(task: Task) {
     function launch(skipPrePhase: boolean) {
       const params: Record<string, string> = {
+        launchId: Date.now().toString(),
         taskName: task.displayName,
         skipPrePhase: String(skipPrePhase),
       };

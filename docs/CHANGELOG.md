@@ -14,6 +14,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Fixed
 - **Give-up → restart not working** — after giving up a task session and navigating back to Tasks, tapping play again did nothing because the mount-only `useEffect([], [])` auto-start never re-fires on tab re-focus; fixed by also running the auto-start logic inside `useFocusEffect` (guarded by `machineRef.current?.getState() === 'idle'` to prevent double-start on first mount)
+- **Stale phase/notification on repeated same-task launch** — replaying the same task left `taskPhase` and `prePhaseEndTimeRef` from the previous run because the reset and notification effects keyed on `taskName`, which doesn't change between launches of the same task; fixed by adding `launchId: Date.now().toString()` to every `launch()` call in `tasks.tsx` and using `launchId` as the effect dependency instead of `taskName`
+
+### Changed
+- `TaskService.test.ts` import updated from relative path (`'../TaskService'`) to repo alias (`'@/src/services/TaskService'`) to match the shared import contract
 
 ---
 

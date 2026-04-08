@@ -27,7 +27,8 @@ import { getItem, setItem } from "@/src/storage/AppStorage";
 import { STORAGE_KEYS } from "@/src/storage/keys";
 import { updateStreakAfterSession } from "@/src/services/StreakService";
 import { recordQuestEvent } from "@/src/services/QuestStorage";
-import { adjustSessionDuration, calculateTaskCoins, initialTaskPhase } from "@/src/services/TaskService";
+import { adjustSessionDuration, calculateTaskCoins, initialTaskPhase, resolveAutoStart } from "@/src/services/TaskService";
+import type { TaskSessionContext } from "@/src/services/NotificationService";
 import { addRecentDuration } from "@/src/storage/recentDurations";
 import { resetDailyDataIfNeeded } from "@/src/storage/seedData";
 import { formatDuration } from "@/src/utils/durationPicker";
@@ -37,7 +38,8 @@ export default function FocusScreen() {
   const navigation = useNavigation();
 
   // Task params (when launched from Tasks screen)
-  const params = useLocalSearchParams<{ taskName?: string; durationSeconds?: string; skipPrePhase?: string }>();
+  const params = useLocalSearchParams<{ launchId?: string; taskName?: string; durationSeconds?: string; skipPrePhase?: string }>();
+  const launchId = params.launchId ?? null;
   const taskName = params.taskName ?? null;
   const taskDurationSeconds = params.durationSeconds ? parseInt(params.durationSeconds, 10) : null;
   const skipPrePhase = params.skipPrePhase === 'true';
@@ -65,6 +67,10 @@ export default function FocusScreen() {
   const sessionDurationRef = useRef(duration);
   const sessionStartedAtRef = useRef<Date>(new Date());
   const prePhaseEndTimeRef = useRef<number>(0);
+  const sessionEndTimeRef = useRef<number>(0);
+  const sessionLaunchIdRef = useRef<string | null>(null);
+  const launchIdRef = useRef<string | null>(launchId);
+  const skipPrePhaseRef = useRef(skipPrePhase);
   const taskPhaseRef = useRef<'pre' | 'session'>('pre');
   const isTaskModeRef = useRef(isTaskMode);
   const taskDurationSecondsRef = useRef(taskDurationSeconds);
@@ -74,6 +80,8 @@ export default function FocusScreen() {
   taskPhaseRef.current = taskPhase;
   isTaskModeRef.current = isTaskMode;
   taskDurationSecondsRef.current = taskDurationSeconds;
+  launchIdRef.current = launchId;
+  skipPrePhaseRef.current = skipPrePhase;
 
   const loadData = useCallback(async () => {
     const [name, totalSessions, recents, manualModeStored] = await Promise.all([
@@ -98,12 +106,26 @@ export default function FocusScreen() {
     useCallback(() => {
       loadData();
       // Re-start task session on re-focus when pre-phase was skipped and machine is idle.
-      // Handles the case where the user gave up, went back to Tasks, and tapped play again —
-      // the screen is already mounted so the mount-only auto-start effect doesn't re-fire.
-      if (isTaskMode && skipPrePhase && machineRef.current?.getState() === 'idle') {
-        if (taskDurationSeconds !== null) {
-          setActiveSessionDuration(taskDurationSeconds);
-          handleStart(taskDurationSeconds);
+      // Uses refs (launchIdRef, sessionLaunchIdRef, sessionEndTimeRef) to avoid stale
+      // closure values — resolveAutoStart encapsulates the decision logic.
+      if (isTaskModeRef.current && skipPrePhaseRef.current && machineRef.current?.getState() === 'idle') {
+        const taskDur = taskDurationSecondsRef.current;
+        if (taskDur !== null) {
+          const result = resolveAutoStart(
+            launchIdRef.current,
+            sessionLaunchIdRef.current,
+            sessionEndTimeRef.current,
+            taskDur,
+            Date.now(),
+          );
+          if (result.action === 'resume') {
+            setActiveSessionDuration(result.seconds);
+            handleStart(result.seconds);
+          } else if (result.action === 'fresh') {
+            setActiveSessionDuration(taskDur);
+            handleStart(taskDur);
+          }
+          // 'none': intentional give-up — user taps Play in Tasks for a new launchId
         } else {
           handleStartOpenFlow();
         }
@@ -111,20 +133,20 @@ export default function FocusScreen() {
       return () => {
         machineRef.current?.giveUp();
       };
-    }, [loadData, isTaskMode, skipPrePhase, taskDurationSeconds]),
+    }, [loadData]),
   );
 
-  // Reset phase when a new task is pushed (taskName changes)
+  // Reset phase on each new launch (launchId is unique per push, unlike taskName)
   useEffect(() => {
     if (isTaskMode) setTaskPhase(initialTaskPhase(skipPrePhase));
-  }, [isTaskMode, taskName, skipPrePhase]);
+  }, [isTaskMode, launchId]);
 
   // Fire pre-phase notification and record end time when warm-up starts
   useEffect(() => {
     if (!isTaskMode || taskPhase !== 'pre') return;
     prePhaseEndTimeRef.current = Date.now() + 120_000;
     showPrePhaseNotification(taskDurationSeconds);
-  }, [isTaskMode, taskPhase, taskDurationSeconds]);
+  }, [isTaskMode, taskPhase, taskDurationSeconds, launchId]);
 
   // Hide tab bar during active session OR task pre-phase
   const shouldHideTabBar = sessionActive || (isTaskMode && taskPhase === 'pre');
@@ -194,12 +216,27 @@ export default function FocusScreen() {
     const totalSecs = overrideSecs ?? duration * 60;
     sessionDurationRef.current = Math.round(totalSecs / 60);
     sessionStartedAtRef.current = new Date();
-    if (overrideSecs !== undefined) setDuration(overrideSecs / 60);
+    sessionEndTimeRef.current = Date.now() + totalSecs * 1000;
+    sessionLaunchIdRef.current = launchIdRef.current; // use ref — always current, not stale closure
+    // Keep task countdown in sync with the actual session duration being timed.
+    // Without this, a give-up → setup-view Start would show the stale previous activeSessionDuration.
+    setActiveSessionDuration(totalSecs);
+    // Only update the Step Away slider when not in task mode — task sessions
+    // must not overwrite the user's manually chosen duration.
+    if (overrideSecs !== undefined && !isTaskMode) setDuration(overrideSecs / 60);
     machineRef.current.startSession();
-    showSessionNotification(petName, totalSecs, petEmoji);
+    // Embed task context in notification data so _layout.tsx can navigate back
+    // with the same params and preserve isTaskMode on notification tap.
+    const taskContext: TaskSessionContext | undefined =
+      isTaskMode && launchId && taskName
+        ? { launchId, taskName, durationSeconds: taskDurationSeconds ?? 0, skipPrePhase }
+        : undefined;
+    showSessionNotification(petName, totalSecs, petEmoji, undefined, taskContext);
   }
 
   function handleGiveUp() {
+    // Reset sentinel so the next useFocusEffect callback starts fresh (full duration).
+    sessionEndTimeRef.current = 0;
     machineRef.current?.giveUp();
     cancelSessionNotification();
   }
