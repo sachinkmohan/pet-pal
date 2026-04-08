@@ -27,7 +27,7 @@ import { getItem, setItem } from "@/src/storage/AppStorage";
 import { STORAGE_KEYS } from "@/src/storage/keys";
 import { updateStreakAfterSession } from "@/src/services/StreakService";
 import { recordQuestEvent } from "@/src/services/QuestStorage";
-import { adjustSessionDuration, calculateTaskCoins, initialTaskPhase, resolveAutoStart } from "@/src/services/TaskService";
+import { adjustSessionDuration, calculateTaskCoins, initialTaskPhase, postWarmupResumeSeconds, resolveAutoStart, type Task } from "@/src/services/TaskService";
 import type { TaskSessionContext } from "@/src/services/NotificationService";
 import { addRecentDuration } from "@/src/storage/recentDurations";
 import { resetDailyDataIfNeeded } from "@/src/storage/seedData";
@@ -38,8 +38,9 @@ export default function FocusScreen() {
   const navigation = useNavigation();
 
   // Task params (when launched from Tasks screen)
-  const params = useLocalSearchParams<{ launchId?: string; taskName?: string; durationSeconds?: string; skipPrePhase?: string }>();
+  const params = useLocalSearchParams<{ launchId?: string; taskId?: string; taskName?: string; durationSeconds?: string; skipPrePhase?: string }>();
   const launchId = params.launchId ?? null;
+  const taskId = params.taskId ?? null;
   const taskName = params.taskName ?? null;
   const taskDurationSeconds = params.durationSeconds ? parseInt(params.durationSeconds, 10) : null;
   const skipPrePhase = params.skipPrePhase === 'true';
@@ -70,6 +71,7 @@ export default function FocusScreen() {
   const sessionEndTimeRef = useRef<number>(0);
   const sessionLaunchIdRef = useRef<string | null>(null);
   const launchIdRef = useRef<string | null>(launchId);
+  const taskIdRef = useRef<string | null>(taskId);
   const skipPrePhaseRef = useRef(skipPrePhase);
   const taskPhaseRef = useRef<'pre' | 'session'>('pre');
   const isTaskModeRef = useRef(isTaskMode);
@@ -81,6 +83,7 @@ export default function FocusScreen() {
   isTaskModeRef.current = isTaskMode;
   taskDurationSecondsRef.current = taskDurationSeconds;
   launchIdRef.current = launchId;
+  taskIdRef.current = taskId;
   skipPrePhaseRef.current = skipPrePhase;
 
   const loadData = useCallback(async () => {
@@ -200,9 +203,16 @@ export default function FocusScreen() {
         setTaskPhase('session');
         if (taskDurationSecondsRef.current !== null) {
           const overdueMs = Date.now() - prePhaseEndTimeRef.current;
-          const adjusted = adjustSessionDuration(taskDurationSecondsRef.current, overdueMs);
-          setActiveSessionDuration(adjusted);
-          handleStart(adjusted);
+          const resumeSeconds = postWarmupResumeSeconds(taskDurationSecondsRef.current, overdueMs);
+          if (resumeSeconds === 0) {
+            // Both warmup AND task fully elapsed in background — complete immediately with full credit
+            sessionDurationRef.current = Math.round(taskDurationSecondsRef.current / 60);
+            machineRef.current?.startSession();
+            machineRef.current?.timerComplete();
+          } else {
+            setActiveSessionDuration(resumeSeconds);
+            handleStart(resumeSeconds);
+          }
         } else {
           handleStartOpenFlow();
         }
@@ -309,6 +319,26 @@ export default function FocusScreen() {
 
   async function handleSaveSession() {
     await saveSessionData(completedDuration);
+
+    // Auto-complete the task so the user doesn't need to tap the checkbox
+    // and so handleToggleComplete can't double-count the same session.
+    const currentTaskId = taskIdRef.current;
+    if (isTaskMode && currentTaskId) {
+      const now = new Date().toISOString();
+      const storedTasks = await getItem<Task[]>(STORAGE_KEYS.POCHI_TASKS) ?? [];
+      const updatedTasks = storedTasks.map((t) =>
+        t.id === currentTaskId ? { ...t, completed: true, completedAt: now } : t,
+      );
+      const completions = await getItem<{ completedAt: string }[]>(STORAGE_KEYS.POCHI_TASK_COMPLETIONS) ?? [];
+      const earned = calculateTaskCoins(taskDurationSeconds);
+      const coins = await getItem<number>(STORAGE_KEYS.COINS) ?? 0;
+      await Promise.all([
+        setItem(STORAGE_KEYS.POCHI_TASKS, updatedTasks),
+        setItem(STORAGE_KEYS.POCHI_TASK_COMPLETIONS, [...completions, { completedAt: now }]),
+        setItem(STORAGE_KEYS.COINS, coins + earned),
+      ]);
+    }
+
     setSessionComplete(false);
     machineRef.current?.giveUp(); // completed → idle
     if (isTaskMode) router.back();
@@ -585,7 +615,7 @@ export default function FocusScreen() {
                   <ThemedText style={{ fontWeight: '700' }}>{taskName}</ThemedText>
                 </ThemedText>
                 <ThemedText style={[styles.celebSub, { color: PetBloomColors.primary }]}>
-                  Mark it complete to earn {calculateTaskCoins(taskDurationSeconds)} coins 🪙
+                  Tap below to earn {calculateTaskCoins(taskDurationSeconds)} coins 🪙
                 </ThemedText>
               </>
             ) : (

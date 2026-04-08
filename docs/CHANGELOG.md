@@ -5,6 +5,26 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [Unreleased] — branch: PET-16
+
+### Added
+- **`postWarmupResumeSeconds(taskDurationSeconds, overdueMs)`** — new pure function in `TaskService.ts`; returns `max(0, taskDur - round(overdueMs/1000))`; returns **0** (not 5) when the task has fully elapsed in background, signalling an immediate completion rather than a 5-second countdown; TDD'd with 5 tests
+
+### Fixed
+- **Background-complete shows 5-second countdown + "0 min"** — when the app was backgrounded during the 2-min warm-up and reopened after both the warmup *and* the task had elapsed, `adjustSessionDuration` floored at 5s causing a 5-second timer followed by a completion modal reporting "0 min focused"; fixed by using `postWarmupResumeSeconds` (floors at 0) and, when 0 is returned, immediately transitioning the state machine (`startSession()` + `timerComplete()`) with `sessionDurationRef` set to full task minutes so the modal shows the correct duration
+- **Task completion modal says "Mark it complete to earn N coins"** — coins are now awarded automatically inside `handleSaveSession` (not via the checkbox), so the teaser text was misleading; updated to **"Tap below to earn N coins 🪙"**
+- **Duration badge disappears on completed tasks** — the `!task.completed` guard in the task row render was hiding the duration badge after check-off; removed the guard so the badge remains visible on completed tasks
+- **Task time not added to home/stats screen** — `handleToggleComplete` never updated `FOCUS_TIME_TODAY` or `SESSIONS_TODAY`; fixed by incrementing both keys on check-off using `focusMinutesFromTask(task.durationSeconds)` (new pure helper, TDD'd with 4 tests) and `resetDailyDataIfNeeded()` before writing
+- **Double-counting when session completes + task manually checked off** — `handleToggleComplete` incrementing stats + `focus.tsx` saving session data both counted the same session; fixed by auto-completing the task inside `handleSaveSession` (marks `completed: true`, adds to `POCHI_TASK_COMPLETIONS`, awards coins) so the `task.completed` guard in `handleToggleComplete` fires and prevents the second count
+- **`taskId` not passed to focus screen** — `handlePlay` in `tasks.tsx` was missing `taskId: task.id` in the route params; added so `focus.tsx` can identify which task to auto-complete after "Count this time 🌟"
+
+### Changed
+- `focus.tsx` `handleSaveSession` now auto-completes the active task (updates `POCHI_TASKS`, appends to `POCHI_TASK_COMPLETIONS`, awards `calculateTaskCoins` coins) when `isTaskMode && taskId` — no separate checkbox tap needed
+- `tasks.tsx` `handlePlay` passes `taskId: task.id` as a route param to `focus.tsx`
+- `focus.tsx` reads `taskId` from `useLocalSearchParams`; keeps `taskIdRef` in sync for closure-safe access in `handleSaveSession`
+
+---
+
 ## [Unreleased] — branch: PET-15
 
 ### Added

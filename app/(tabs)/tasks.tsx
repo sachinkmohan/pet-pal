@@ -19,12 +19,14 @@ import {
   buildRolling7Days,
   calculateTaskCoins,
   filterForNewDay,
+  focusMinutesFromTask,
   processTaskInput,
   shouldCarryOver,
   type Task,
 } from "@/src/services/TaskService";
 import { getItem, setItem } from "@/src/storage/AppStorage";
 import { STORAGE_KEYS } from "@/src/storage/keys";
+import { resetDailyDataIfNeeded } from "@/src/storage/seedData";
 
 // ── Onboarding content ────────────────────────────────────────────────────────
 
@@ -261,6 +263,18 @@ export default function TasksScreen() {
     const currentCoins = await getItem<number>(STORAGE_KEYS.COINS);
     await setItem(STORAGE_KEYS.COINS, (currentCoins ?? 0) + earned);
     setCoinReward(earned);
+
+    // Add task duration to focus stats so home/stats screens reflect it
+    await resetDailyDataIfNeeded();
+    const focusMinutes = focusMinutesFromTask(task.durationSeconds);
+    const [currentFocusTime, currentSessionsToday] = await Promise.all([
+      getItem<number>(STORAGE_KEYS.FOCUS_TIME_TODAY),
+      getItem<number>(STORAGE_KEYS.SESSIONS_TODAY),
+    ]);
+    await Promise.all([
+      setItem(STORAGE_KEYS.FOCUS_TIME_TODAY, (currentFocusTime ?? 0) + focusMinutes),
+      setItem(STORAGE_KEYS.SESSIONS_TODAY, (currentSessionsToday ?? 0) + 1),
+    ]);
     } finally {
       inFlight.delete(taskId);
     }
@@ -312,6 +326,7 @@ export default function TasksScreen() {
     function launch(skipPrePhase: boolean) {
       const params: Record<string, string> = {
         launchId: Date.now().toString(),
+        taskId: task.id,
         taskName: task.displayName,
         skipPrePhase: String(skipPrePhase),
       };
@@ -476,7 +491,7 @@ export default function TasksScreen() {
                       >
                         {task.displayName}
                       </ThemedText>
-                      {task.durationSeconds !== null && !task.completed && (
+                      {task.durationSeconds !== null && (
                         <View style={[styles.durationBadge, { marginLeft: 6 }]}>
                           <ThemedText style={styles.durationBadgeText}>
                             {formatDurationBadge(task.durationSeconds)}

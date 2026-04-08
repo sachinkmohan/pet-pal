@@ -191,11 +191,17 @@ Shown when the session timer completes naturally (while app is in foreground):
 
 > **Session done! 🎯**
 > You focused 8 min on **Review PR**
-> Mark it complete to earn 5 coins 🪙
+> Tap below to earn 5 coins 🪙
 
 Buttons: `Count this time 🌟` / `Don't save — I looked at my phone`
 
-Both buttons navigate back to the Tasks screen via `router.back()`. Coins are awarded separately when the user checks off the task.
+Tapping **Count this time 🌟** (`handleSaveSession`) saves the session data **and** auto-completes the task in one step:
+- Marks the task `completed: true` in `POCHI_TASKS`
+- Appends `{ completedAt }` to `POCHI_TASK_COMPLETIONS`
+- Awards `calculateTaskCoins(taskDurationSeconds)` coins to `STORAGE_KEYS.COINS`
+- Navigates back to Tasks via `router.back()`
+
+Because the task is already marked complete, the `handleToggleComplete` guard (`if (task.completed) return`) fires on any subsequent checkbox tap — preventing double-counting of stats or coins.
 
 ---
 
@@ -229,7 +235,9 @@ All pure logic lives in `src/services/TaskService.ts` and `src/services/Notifica
 | `buildRolling7Days(completions, now)` | `number[7]`; today = index 6 |
 | `processTaskInput(newText, existingDuration)` | `{ displayText, durationSeconds }` |
 | `calculateTaskCoins(durationSeconds)` | `max(5, round(durationSeconds / 300))` |
-| `adjustSessionDuration(durationSeconds, overdueMs)` | `max(5, duration - round(overdueMs / 1000))` |
+| `adjustSessionDuration(durationSeconds, overdueMs)` | `max(5, duration - round(overdueMs / 1000))` — used for AppState resume when session was partially elapsed |
+| `postWarmupResumeSeconds(taskDurationSeconds, overdueMs)` | `max(0, taskDur - round(overdueMs / 1000))` — returns 0 when task fully elapsed in background; signals immediate completion (no 5s timer) |
+| `focusMinutesFromTask(durationSeconds)` | `Math.round(durationSeconds / 60)`; returns 0 for null duration; used when check-off updates `FOCUS_TIME_TODAY` |
 | `initialTaskPhase(skipPrePhase)` | `'pre'` or `'session'`; used by focus.tsx to initialise phase state |
 | `remainingSessionSeconds(sessionEndTime, taskDurationSeconds, now)` | Seconds remaining; `≤ 0` sentinel returns full duration |
 | `resolveAutoStart(launchId, sessionLaunchId, sessionEndTime, taskDurationSeconds, now)` | `AutoStartResult`: `'fresh'` / `'resume' + seconds` / `'none'` |
