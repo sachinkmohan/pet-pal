@@ -5,6 +5,18 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [Unreleased] — branch: PET-15
+
+### Added
+- **Optional pre-phase warm-up** — tapping play on a task now shows an action sheet: **Start now** (jumps straight into the session) or **2-min warmup** (existing behaviour)
+  - `skipPrePhase` route param (`'true'`/`'false'`) passed from `tasks.tsx` to `focus.tsx`
+  - `initialTaskPhase(skipPrePhase)` — pure helper in `TaskService.ts`; TDD'd with 2 tests
+
+### Fixed
+- **Give-up → restart not working** — after giving up a task session and navigating back to Tasks, tapping play again did nothing because the mount-only `useEffect([], [])` auto-start never re-fires on tab re-focus; fixed by also running the auto-start logic inside `useFocusEffect` (guarded by `machineRef.current?.getState() === 'idle'` to prevent double-start on first mount)
+
+---
+
 ## [Unreleased] — branch: PET-14
 
 ### Added

@@ -98,6 +98,7 @@ PetPal is a **virtual pet + focus app** for Android. Your pet Pochi's mood and g
 - [x] Daily quest system (1 quest/day, 5 types, resets at midnight)
 - [x] Coins 🪙 — soft currency earned from quests and task completions
 - [x] Tasks screen (PET-14) — task list with inline duration, 2-min pre-phase, coin rewards on check-off
+- [x] Optional pre-phase warm-up (PET-15) — action sheet lets user choose "Start now" or "2-min warmup"; bug fix for give-up → restart flow
 
 ---
 
@@ -936,7 +937,7 @@ Built after the Quest System. Journey tab replaced with Tasks tab. See `docs/tas
 - [x] Onboarding — 3-step inline guide on first use; re-accessible via `?` button
 
 **Focus session extension (2-minute pre-phase)**
-- [x] Launching a task from Tasks pushes focus.tsx with `taskName` + `durationSeconds` params
+- [x] Launching a task from Tasks pushes focus.tsx with `taskName` + `durationSeconds` + `skipPrePhase` params
 - [x] Pre-phase: 2-minute `CircularCountdown` with activation-energy quote before real session
 - [x] `showPrePhaseNotification` — sticky notification fired immediately: `"2-min warm-up started ⏱️ · Task begins at X:XX · Ends at Y:YY"`; stays in tray until session starts
 - [x] AppState listener — auto-transitions pre→session when app reopened after 2+ minutes
@@ -944,6 +945,12 @@ Built after the Quest System. Journey tab replaced with Tasks tab. See `docs/tas
 - [x] Tab bar hidden during pre-phase and active task session
 - [x] Task completion modal — shows task name, minutes focused, coin-earn teaser; navigates back to Tasks on dismiss
 - [x] Task sessions excluded from recents list; minutes still count toward `FOCUS_TIME_TODAY`
+
+**Optional pre-phase (PET-15)**
+- [x] `Alert.alert` in `handlePlay` — user chooses **Start now** (skipPrePhase) or **2-min warmup** before launching
+- [x] `skipPrePhase: 'true'` route param bypasses warm-up; `initialTaskPhase(skipPrePhase)` initialises `taskPhase` state
+- [x] `initialTaskPhase(skipPrePhase)` — pure helper in `TaskService.ts`; TDD'd
+- [x] Auto-start in `useFocusEffect` — fires `handleStart` on every focus gain when `skipPrePhase=true` and machine is idle; handles give-up → navigate back → play again flow
 
 **NotificationService additions (TDD)**
 - [x] `formatCheckpointBody(durationSeconds)` — `"Your Xm session begins now."` / `"You're in flow. Let's go."`
@@ -961,6 +968,7 @@ Built after the Quest System. Journey tab replaced with Tasks tab. See `docs/tas
 - [x] `CircularCountdown` key props (`"pre-phase"`, `"task-session"`, `"regular-session"`) — prevents React reconciling countdowns as the same instance across phase transitions
 - [x] Stale closure fix — `handleStart`/`handleStartOpenFlow` now read `machineRef.current.getState()` instead of React state
 - [x] Float minutes — `Math.round(totalSecs / 60)` in `handleStart`; `Math.round` in Home screen display
+- [x] Give-up → restart not working — mount-only auto-start `useEffect([], [])` never re-fires on tab re-focus; fixed by duplicating auto-start logic in `useFocusEffect` with `machineRef.current?.getState() === 'idle'` guard
 
 ---
 

@@ -89,33 +89,58 @@ A 3-step inline guide appears on first use. Re-accessible via the `?` button in 
 
 ## Launching a task session
 
-Tapping the play button on a task with a duration pushes `focus.tsx` with params:
+Tapping the play button on a task shows an action sheet:
+
+| Option | Behaviour |
+|---|---|
+| **Start now** | Skips warm-up; session starts immediately |
+| **2-min warmup** | 2-minute pre-phase countdown before real session |
+| **Cancel** | Dismisses sheet |
+
+The chosen option pushes `focus.tsx` with params:
 
 ```ts
 router.push({
   pathname: '/(tabs)/focus',
-  params: { taskName: task.displayName, durationSeconds: task.durationSeconds },
+  params: {
+    taskName: task.displayName,
+    durationSeconds: task.durationSeconds, // omitted for open-flow tasks
+    skipPrePhase: 'true' | 'false',
+  },
 });
 ```
 
-Tasks without a duration launch an open-flow session (no fixed countdown).
+Tasks without a duration launch an open-flow session (no fixed countdown) regardless of warm-up choice.
 
 ---
 
-## 2-minute pre-phase
+## 2-minute pre-phase (optional)
 
 ### Purpose
 
-Lowers activation energy. The user does 2 minutes of starting the task before the real session begins — by which point resistance has dissolved.
+Lowers activation energy. The user does 2 minutes of starting the task before the real session begins — by which point resistance has dissolved. Users who are already ready can skip it.
 
-### Flow
+### Flow — with warm-up
 
 ```text
-Task tapped → pre-phase starts (2-min CircularCountdown)
+Task tapped → action sheet → "2-min warmup"
+           → pre-phase starts (2-min CircularCountdown)
            → sticky notification fired immediately
            → 2 minutes elapse (or app resumed after 2+ min)
            → pre-phase notification dismissed
            → real session starts (CircularCountdown with task duration)
+           → session notification shown
+           → timer completes → completion modal → router.back()
+```
+
+### Flow — skip warm-up
+
+```text
+Task tapped → action sheet → "Start now"
+           → focus.tsx receives skipPrePhase='true'
+           → taskPhase initialised to 'session' via initialTaskPhase(true)
+           → useFocusEffect auto-calls handleStart on every focus gain
+             (guard: machineRef.current?.getState() === 'idle')
            → session notification shown
            → timer completes → completion modal → router.back()
 ```
@@ -197,6 +222,7 @@ All pure logic lives in `src/services/TaskService.ts` and `src/services/Notifica
 | `processTaskInput(newText, existingDuration)` | `{ displayText, durationSeconds }` |
 | `calculateTaskCoins(durationSeconds)` | `max(5, round(durationSeconds / 300))` |
 | `adjustSessionDuration(durationSeconds, overdueMs)` | `max(5, duration - round(overdueMs / 1000))` |
+| `initialTaskPhase(skipPrePhase)` | `'pre'` or `'session'`; used by focus.tsx to initialise phase state |
 
 ### NotificationService.ts (additions)
 
@@ -215,3 +241,4 @@ All pure logic lives in `src/services/TaskService.ts` and `src/services/Notifica
 - **Stale closure fix** — `handleStart` and `handleStartOpenFlow` check `machineRef.current.getState() !== 'idle'` (not React state), so they always read the current machine state from async callbacks.
 - **Float minutes** — `Math.round(totalSecs / 60)` in `handleStart` prevents fractional values accumulating in `FOCUS_TIME_TODAY`.
 - **Task sessions excluded from recents** — `addRecentDuration` is skipped when `isTaskMode`; the Step Away quick-start chips only reflect free-form sessions.
+- **Give-up → restart** — the mount-only `useEffect([], [])` auto-start doesn't re-fire when the focus tab regains focus after navigation. Auto-start is also placed in `useFocusEffect` so it fires on every focus gain; the `machineRef.current?.getState() === 'idle'` guard prevents double-starting on first mount (where `machineRef.current` is still `null` when `useFocusEffect` fires).
