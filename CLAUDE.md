@@ -64,7 +64,9 @@ src/
     FocusService.ts         # Pure TS state machine: idle → active → completed
                             # startSession(), timerComplete(), giveUp(), dispose()
                             # No grace period — replaced by honest-reporting ("Save" / "Don't save — I cheated")
-    NotificationService.ts  # showSessionNotification(petName, durationSeconds) + cancelSessionNotification()
+    NotificationService.ts  # showSessionNotification(petName, durationSeconds, petEmoji, now?, taskContext?) + cancelSessionNotification()
+                            #   taskContext: TaskSessionContext { launchId, taskName, durationSeconds, skipPrePhase }
+                            #   embedded in notification data so _layout.tsx can navigate back with params preserved
                             # showPrePhaseNotification(taskDurationSeconds) — sticky warm-up notification; tracks ID
                             # cancelPrePhaseNotification() — call at all three session-start paths in focus.tsx
                             # formatEndTime, formatCheckpointBody, formatPrePhaseBody — pure, TDD'd
@@ -92,6 +94,10 @@ src/
                             # calculateTaskCoins(durationSeconds) → max(5, round(durationSeconds / 300))
                             # adjustSessionDuration(durationSeconds, overdueMs) → max(5, duration - round(overdueMs/1000))
                             # initialTaskPhase(skipPrePhase) → 'pre' | 'session'
+                            # remainingSessionSeconds(sessionEndTime, taskDurationSeconds, now) → seconds remaining (sentinel ≤0 → full duration)
+                            # resolveAutoStart(launchId, sessionLaunchId, sessionEndTime, taskDurationSeconds, now) → AutoStartResult
+                            #   { action: 'fresh' | 'resume' | 'none'; seconds?: number }
+                            #   'fresh' = new launch from Tasks; 'resume' = notification-interrupted session; 'none' = intentional give-up
   storage/
     recentDurations.ts      # addRecentDuration(existing, duration) — deduplicates, caps at 5
                             # Used by Step Away screen quick-start chips; skipped for task sessions
@@ -140,11 +146,12 @@ Domain components built so far (use these rather than re-implementing inline):
 - **Mood:** Calculated in real-time via `calculateMood()` in `src/services/MoodService.ts`. Call after every session completion and every feed. Pass `screenTimeHours` once `ScreenTimeService` is wired (Phase 6).
 - **Evolution:** Driven by `totalSessionsEver` (never resets). Thresholds: 0/10/25/50/100/200 sessions.
 - **Focus session honesty:** No cheat detection. On session complete, user chooses "Save session" or "Don't save — I cheated". Data only written on explicit save.
-- **Session notification:** Body format: `"25 min · Ends at 2:30 PM"`. Cancelled on give-up or natural timer completion. NOT cancelled on screen blur or navigation — notification persists so user can return via tap.
+- **Session notification:** Body format: `"25 min · Ends at 2:30 PM"`. Cancelled on give-up or natural timer completion. NOT cancelled on screen blur or navigation — notification persists so user can return via tap. Notification data embeds `TaskSessionContext` so `_layout.tsx` navigates back with task params, preserving `isTaskMode`.
+- **Notification tap navigation (`_layout.tsx`):** Reads `data.task` from the notification payload. If `data.task.taskName` is set, navigates with `{ launchId, taskName, durationSeconds, skipPrePhase }` params so `focus.tsx` stays in task mode. Otherwise navigates without params (Step Away mode).
 - **Pre-phase notification:** Sticky `"2-min warm-up started ⏱️"` fired when task pre-phase starts. Tracks ID in `NotificationService`. Cancelled at all three session-start paths: `CircularCountdown.onComplete`, AppState listener, `__DEV__` skip button.
 - **Recent durations:** Last 5 unique saved session durations in `STORAGE_KEYS.RECENT_DURATIONS`. Shown as quick-start chips on Focus screen; hidden on fresh install. Task sessions are excluded — they don't populate recents.
 - **Tasks:** One-way check-off (no unchecking). Coin reward on check-off: `calculateTaskCoins(durationSeconds)`. Task sessions launched via `router.push({ pathname: '/(tabs)/focus', params: { launchId, taskName, durationSeconds, skipPrePhase } })` — `launchId: Date.now().toString()` is generated per launch so focus.tsx effects re-fire even when the same task is played twice; `skipPrePhase: 'true'` bypasses the 2-min warm-up. An `Alert.alert` in `handlePlay` lets the user choose **Start now** or **2-min warmup** before launching. Storage: `POCHI_TASKS`, `POCHI_TASKS_LAST_DATE`, `POCHI_TASK_COMPLETIONS`, `POCHI_TASKS_ONBOARDING_DONE`.
-- **2-minute pre-phase (optional):** Task sessions can start with a 2-min `CircularCountdown` warm-up (default) or skip it via `skipPrePhase=true`. When skipped, `initialTaskPhase(true)` returns `'session'` and `useFocusEffect` auto-calls `handleStart` immediately (guarded by `machineRef.current?.getState() === 'idle'` — handles both first mount and give-up → restart via tab re-focus). The reset effect and pre-phase notification effect key on `launchId` (not `taskName`) so they re-run even when the same task is launched twice. AppState listener auto-transitions when app reopened after 2+ min (`prePhaseEndTimeRef` tracks wall-clock end time). `adjustSessionDuration` subtracts elapsed overdue time so countdown shows true remaining time. Always use `key` props on `CircularCountdown` (`"pre-phase"`, `"task-session"`, `"regular-session"`) to force unmount/remount between phases.
+- **2-minute pre-phase (optional):** Task sessions can start with a 2-min `CircularCountdown` warm-up (default) or skip it via `skipPrePhase=true`. When skipped, `initialTaskPhase(true)` returns `'session'` and `useFocusEffect` auto-calls `handleStart` via `resolveAutoStart` (always reads from refs — `launchIdRef`, `skipPrePhaseRef`, `sessionLaunchIdRef`, `sessionEndTimeRef`). `useFocusEffect` deps are `[loadData]` only — all task params read via refs to avoid stale closures. The reset effect and pre-phase notification effect key on `launchId` (not `taskName`) so they re-run even when the same task is launched twice. AppState listener auto-transitions when app reopened after 2+ min (`prePhaseEndTimeRef` tracks wall-clock end time). `adjustSessionDuration` subtracts elapsed overdue time so countdown shows true remaining time. Always use `key` props on `CircularCountdown` (`"pre-phase"`, `"task-session"`, `"regular-session"`) to force unmount/remount between phases.
 - **`CircularCountdown` key rule:** Always provide a unique `key` when multiple `CircularCountdown` instances can appear at the same tree position. Without keys, React reconciles them as the same instance and the `useEffect([], [])` interval never re-runs.
 - **Duration picker:** Focus screen has a `Manual` toggle switch (`STORAGE_KEYS.MANUAL_DURATION_MODE`). When ON, replaces `CircularSlider` with `DurationPicker` (HH:MM snap-scroll). Toggle state persisted — restored on app reopen. Max duration: 5h 55m (355 min).
 - **Duration formatting:** Always use `formatDuration(minutes)` from `src/utils/durationPicker.ts` for displaying stat values. Output: `"25m"` / `"1h"` / `"1h 20m"`.

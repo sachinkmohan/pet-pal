@@ -950,7 +950,15 @@ Built after the Quest System. Journey tab replaced with Tasks tab. See `docs/tas
 - [x] `Alert.alert` in `handlePlay` — user chooses **Start now** (skipPrePhase) or **2-min warmup** before launching
 - [x] `skipPrePhase: 'true'` route param bypasses warm-up; `initialTaskPhase(skipPrePhase)` initialises `taskPhase` state
 - [x] `initialTaskPhase(skipPrePhase)` — pure helper in `TaskService.ts`; TDD'd
-- [x] Auto-start in `useFocusEffect` — fires `handleStart` on every focus gain when `skipPrePhase=true` and machine is idle; handles give-up → navigate back → play again flow
+- [x] `launchId: Date.now().toString()` added to every `launch()` call — unique per tap so effects re-fire when same task is replayed
+- [x] Auto-start via `resolveAutoStart` in `useFocusEffect` — all task params read from refs (`launchIdRef`, `skipPrePhaseRef`, `sessionLaunchIdRef`, `sessionEndTimeRef`) to avoid stale closures; `useFocusEffect` deps reduced to `[loadData]`
+
+**Notification → navigation fix (PET-15)**
+- [x] `TaskSessionContext` type added to `NotificationService.ts` — `{ launchId, taskName, durationSeconds, skipPrePhase }` embedded in `session_running` notification data
+- [x] `showSessionNotification` accepts optional `taskContext` param; stores it in `data.task`
+- [x] `_layout.tsx` notification tap handler reads `data.task`; navigates with task params when present so `isTaskMode` is preserved on notification tap
+- [x] `resolveAutoStart(launchId, sessionLaunchId, sessionEndTime, taskDurationSeconds, now) → AutoStartResult` — pure function in `TaskService.ts`; TDD'd with 5 tests; encapsulates `fresh` / `resume` / `none` decision
+- [x] `remainingSessionSeconds` used inside `resolveAutoStart` for resume seconds calculation
 
 **NotificationService additions (TDD)**
 - [x] `formatCheckpointBody(durationSeconds)` — `"Your Xm session begins now."` / `"You're in flow. Let's go."`
@@ -967,8 +975,11 @@ Built after the Quest System. Journey tab replaced with Tasks tab. See `docs/tas
 **Bug fixes**
 - [x] `CircularCountdown` key props (`"pre-phase"`, `"task-session"`, `"regular-session"`) — prevents React reconciling countdowns as the same instance across phase transitions
 - [x] Stale closure fix — `handleStart`/`handleStartOpenFlow` now read `machineRef.current.getState()` instead of React state
-- [x] Float minutes — `Math.round(totalSecs / 60)` in `handleStart`; `Math.round` in Home screen display
-- [x] Give-up → restart not working — mount-only auto-start `useEffect([], [])` never re-fires on tab re-focus; fixed by duplicating auto-start logic in `useFocusEffect` with `machineRef.current?.getState() === 'idle'` guard
+- [x] Float minutes — `Math.round(totalSecs / 60)` in `handleStart`; `minutesToHHMM` rounds input before splitting; fixes personal best shown as float on Home screen
+- [x] Give-up → restart not working (round 2) — stale `launchId` in `useFocusEffect` closure caused `isSameLaunch=true` for new launches; fixed via `launchIdRef` + `resolveAutoStart`
+- [x] Task countdown showing stale duration after give-up — `activeSessionDuration` not updated in `handleStart`; fixed by calling `setActiveSessionDuration(totalSecs)` inside `handleStart`
+- [x] Step Away slider inheriting task duration — `setDuration(overrideSecs / 60)` now guarded with `!isTaskMode`
+- [x] `sessionLaunchIdRef` set from stale closure; changed to `sessionLaunchIdRef.current = launchIdRef.current`
 
 ---
 
