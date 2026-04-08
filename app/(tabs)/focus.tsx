@@ -27,7 +27,7 @@ import { getItem, setItem } from "@/src/storage/AppStorage";
 import { STORAGE_KEYS } from "@/src/storage/keys";
 import { updateStreakAfterSession } from "@/src/services/StreakService";
 import { recordQuestEvent } from "@/src/services/QuestStorage";
-import { adjustSessionDuration, calculateTaskCoins, initialTaskPhase, postWarmupResumeSeconds, resolveAutoStart } from "@/src/services/TaskService";
+import { adjustSessionDuration, calculateTaskCoins, initialTaskPhase, postWarmupResumeSeconds, resolveAutoStart, type Task } from "@/src/services/TaskService";
 import type { TaskSessionContext } from "@/src/services/NotificationService";
 import { addRecentDuration } from "@/src/storage/recentDurations";
 import { resetDailyDataIfNeeded } from "@/src/storage/seedData";
@@ -325,7 +325,7 @@ export default function FocusScreen() {
     const currentTaskId = taskIdRef.current;
     if (isTaskMode && currentTaskId) {
       const now = new Date().toISOString();
-      const storedTasks = await getItem<{ id: string; completed: boolean; completedAt: string | null; durationSeconds: number | null; [key: string]: unknown }[]>(STORAGE_KEYS.POCHI_TASKS) ?? [];
+      const storedTasks = await getItem<Task[]>(STORAGE_KEYS.POCHI_TASKS) ?? [];
       const updatedTasks = storedTasks.map((t) =>
         t.id === currentTaskId ? { ...t, completed: true, completedAt: now } : t,
       );
