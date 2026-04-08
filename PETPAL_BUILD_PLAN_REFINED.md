@@ -96,7 +96,8 @@ PetPal is a **virtual pet + focus app** for Android. Your pet Pochi's mood and g
 - [ ] Pet evolution path (Egg → Legendary)
 - [ ] Progress/Journey screen (evolution timeline)
 - [x] Daily quest system (1 quest/day, 5 types, resets at midnight)
-- [x] Coins 🪙 — soft currency earned from quests
+- [x] Coins 🪙 — soft currency earned from quests and task completions
+- [x] Tasks screen (PET-14) — task list with inline duration, 2-min pre-phase, coin rewards on check-off
 
 ---
 
@@ -906,6 +907,60 @@ Built between Phase 6 and Phase 7. See `docs/quest-system.md` for full design de
 
 **Home screen update**
 - [x] Coin balance shown next to streak badge (🪙 N in amber badge); reloads on focus
+
+---
+
+### Unplanned — Tasks Screen (PET-14, TDD)
+
+Built after the Quest System. Journey tab replaced with Tasks tab. See `docs/tasks-screen.md` for full design detail.
+
+**TaskService.ts (pure logic — TDD)**
+- [x] `parseDuration(text)` — extracts duration from end of string; supports `1h`, `45m`, `2h 30m`, `1h30m`; case-insensitive; must be at end
+- [x] `stripDuration(text)` — removes duration token from display name
+- [x] `createTask(text)` — creates Task with id, displayName, durationSeconds, completed, createdAt
+- [x] `shouldCarryOver(lastDateISO, nowISO)` — true if last date is a different calendar day
+- [x] `filterForNewDay(tasks)` — splits tasks into `{ completed, incomplete }`
+- [x] `buildRolling7Days(completions, now)` — 7-bucket array, today = index 6
+- [x] `processTaskInput(newText, existingDuration)` — pure input transformation: detects duration, strips it, falls back to existing badge
+- [x] `calculateTaskCoins(durationSeconds)` — `max(5, round(durationSeconds / 300))`; null → 5 flat
+- [x] `adjustSessionDuration(durationSeconds, overdueMs)` — subtracts elapsed overdue time; floors at 5s
+
+**Tasks tab screen (`app/(tabs)/tasks.tsx`)**
+- [x] Journey tab replaced with Tasks tab — `checklist` icon; order: Home · Quests · Step Away · Stats · Tasks
+- [x] Inline duration detection — typing `Review PR 10m` strips `10m` into a removable badge; badge updates live
+- [x] One-way check-off — tasks can be marked complete but not unchecked
+- [x] Coin reward on check-off — auto-dismiss modal shows `+N 🪙 / Task complete!` for 1.5s
+- [x] Edit/delete — tap task row to reveal Edit / Delete actions inline
+- [x] Rolling 7-day stats — number row with `—` for zero days; weekly total top-right
+- [x] Carry-over — incomplete tasks from previous days are carried forward; completed tasks are archived
+- [x] Onboarding — 3-step inline guide on first use; re-accessible via `?` button
+
+**Focus session extension (2-minute pre-phase)**
+- [x] Launching a task from Tasks pushes focus.tsx with `taskName` + `durationSeconds` params
+- [x] Pre-phase: 2-minute `CircularCountdown` with activation-energy quote before real session
+- [x] `showPrePhaseNotification` — sticky notification fired immediately: `"2-min warm-up started ⏱️ · Task begins at X:XX · Ends at Y:YY"`; stays in tray until session starts
+- [x] AppState listener — auto-transitions pre→session when app reopened after 2+ minutes
+- [x] `adjustSessionDuration` — subtracts elapsed overdue time so countdown shows true remaining time
+- [x] Tab bar hidden during pre-phase and active task session
+- [x] Task completion modal — shows task name, minutes focused, coin-earn teaser; navigates back to Tasks on dismiss
+- [x] Task sessions excluded from recents list; minutes still count toward `FOCUS_TIME_TODAY`
+
+**NotificationService additions (TDD)**
+- [x] `formatCheckpointBody(durationSeconds)` — `"Your Xm session begins now."` / `"You're in flow. Let's go."`
+- [x] `formatPrePhaseBody(taskDurationSeconds, now)` — `"Task begins at X:XX · Ends at Y:YY"` or begin-only for open flow
+- [x] `showPrePhaseNotification` — sticky, tracks ID, cancelled when session starts
+- [x] `cancelPrePhaseNotification` — dismisses sticky warm-up notification
+
+**Storage keys added**
+- [x] `POCHI_TASKS` — `Task[]` JSON
+- [x] `POCHI_TASKS_LAST_DATE` — ISO string; used by carry-over logic
+- [x] `POCHI_TASK_COMPLETIONS` — `{ completedAt: string }[]`; drives rolling 7-day chart
+- [x] `POCHI_TASKS_ONBOARDING_DONE` — boolean
+
+**Bug fixes**
+- [x] `CircularCountdown` key props (`"pre-phase"`, `"task-session"`, `"regular-session"`) — prevents React reconciling countdowns as the same instance across phase transitions
+- [x] Stale closure fix — `handleStart`/`handleStartOpenFlow` now read `machineRef.current.getState()` instead of React state
+- [x] Float minutes — `Math.round(totalSecs / 60)` in `handleStart`; `Math.round` in Home screen display
 
 ---
 
