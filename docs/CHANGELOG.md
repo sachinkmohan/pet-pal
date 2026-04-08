@@ -5,6 +5,49 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [Unreleased] — branch: PET-14
+
+### Added
+- **Tasks screen** — replaces Journey tab; position 5 (Home · Quests · Step Away · Stats · Tasks); `checklist` icon
+  - Inline duration detection — typing `Review PR 10m` strips duration into a removable badge; updates live via `processTaskInput`
+  - One-way check-off — tasks can be marked complete but not unchecked
+  - Coin reward on check-off — auto-dismiss modal (`+N 🪙 / Task complete!`) for 1.5s; formula: `max(5, round(durationSeconds / 300))`
+  - Edit / Delete — tap task row to reveal actions inline
+  - Carry-over — incomplete tasks from previous days carried forward; completed tasks archived
+  - Rolling 7-day stats — number row with `—` for zero days; weekly total top-right
+  - Onboarding — 3-step inline guide on first use; re-accessible via `?` button
+- **2-minute pre-phase** on task sessions — `CircularCountdown(120s)` with activation-energy quote before the real session
+  - Sticky warm-up notification fired immediately: `"2-min warm-up started ⏱️ · Task begins at X:XX · Ends at Y:YY"`
+  - AppState listener auto-transitions pre→session when app is reopened after 2+ minutes
+  - Adjusted session duration: `adjustSessionDuration(durationSeconds, overdueMs)` subtracts elapsed time so countdown shows true remaining time
+  - Tab bar hidden during pre-phase and active task session
+- **Task completion modal** — shows task name, minutes focused, coin-earn teaser; navigates back to Tasks on dismiss
+- **`TaskService.ts`** — pure logic, fully TDD'd:
+  - `parseDuration`, `stripDuration`, `createTask`, `shouldCarryOver`, `filterForNewDay`, `buildRolling7Days`
+  - `processTaskInput(newText, existingDuration)` — input transformation for inline duration detection
+  - `calculateTaskCoins(durationSeconds)` — coin formula
+  - `adjustSessionDuration(durationSeconds, overdueMs)` — overdue-aware session duration
+- **`NotificationService.ts` additions** — TDD'd pure formatters:
+  - `formatCheckpointBody(durationSeconds)` — checkpoint message
+  - `formatPrePhaseBody(taskDurationSeconds, now)` — warm-up notification body with begin/end times
+  - `showPrePhaseNotification` — sticky, tracks ID, cancelled when session starts
+  - `cancelPrePhaseNotification` — dismisses sticky warm-up notification
+- Storage keys: `POCHI_TASKS`, `POCHI_TASKS_LAST_DATE`, `POCHI_TASK_COMPLETIONS`, `POCHI_TASKS_ONBOARDING_DONE`
+- `checklist` icon mapping added to `components/ui/icon-symbol.tsx`
+- `docs/tasks-screen.md` — full design and implementation reference
+
+### Changed
+- Task sessions excluded from recents list — Step Away quick-start chips only reflect free-form sessions
+- Coins now also earnable from task check-offs (in addition to quests)
+- Session notification no longer dismissed on screen blur or give-up — only on natural timer completion or explicit give-up
+
+### Fixed
+- `CircularCountdown` key props (`"pre-phase"`, `"task-session"`, `"regular-session"`) — prevents React reconciling countdown instances across phase transitions, which caused the 2-min interval to run in the background after skip
+- Stale closure in `handleStart` / `handleStartOpenFlow` — now reads `machineRef.current.getState()` instead of React state
+- Float minutes in `FOCUS_TIME_TODAY` — `Math.round(totalSecs / 60)` in `handleStart`; `Math.round` applied in Home screen display
+
+---
+
 ## [Unreleased] — branch: PET-12
 
 ### Added

@@ -36,6 +36,12 @@ export const STORAGE_KEYS = {
   // Daily Quest
   DAILY_QUEST: 'daily_quest', // DailyQuestState JSON
   COINS: 'coins', // number — accumulated coin balance
+
+  // Tasks screen
+  POCHI_TASKS: 'pochi_tasks',                                  // Task[] JSON
+  POCHI_TASKS_LAST_DATE: 'pochi_tasks_last_date',              // ISO string — last active date
+  POCHI_TASK_COMPLETIONS: 'pochi_task_completions',            // { completedAt: string }[] JSON
+  POCHI_TASKS_ONBOARDING_DONE: 'pochi_tasks_onboarding_done', // boolean
 } as const;
 
 export type StorageKey = (typeof STORAGE_KEYS)[keyof typeof STORAGE_KEYS];

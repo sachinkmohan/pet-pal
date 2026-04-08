@@ -5,6 +5,7 @@
  * Scheduled notifications (pet hungry, daily reminder, streak): Session 18.
  */
 import * as Notifications from 'expo-notifications';
+import { formatDuration } from '@/src/utils/durationPicker';
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -16,6 +17,8 @@ Notifications.setNotificationHandler({
 });
 
 let activeNotificationId: string | null = null;
+let activePrePhaseNotificationId: string | null = null;
+let prePhaseToken = 0;
 
 export function formatEndTime(durationSeconds: number, now = Date.now()): string {
   const end = new Date(now + durationSeconds * 1000);
@@ -49,6 +52,66 @@ export async function showSessionNotification(
   });
 }
 
+
+export function formatCheckpointBody(durationSeconds: number | null): string {
+  if (durationSeconds === null) return "You're in flow. Let's go.";
+  const minutes = Math.round(durationSeconds / 60);
+  return `Your ${formatDuration(minutes)} session begins now.`;
+}
+
+export async function showCheckpointNotification(durationSeconds: number | null): Promise<void> {
+  const { status } = await Notifications.requestPermissionsAsync();
+  if (status !== 'granted') return;
+
+  await Notifications.scheduleNotificationAsync({
+    content: {
+      title: 'Two minutes done! 🎯',
+      body: formatCheckpointBody(durationSeconds),
+      autoDismiss: true,
+      data: { type: 'checkpoint' },
+    },
+    trigger: null,
+  });
+}
+
+export function formatPrePhaseBody(taskDurationSeconds: number | null, now: number): string {
+  const taskBeginsAt = formatEndTime(120, now);
+  if (taskDurationSeconds === null) return `Task begins at ${taskBeginsAt}`;
+  return `Task begins at ${taskBeginsAt} · Ends at ${formatEndTime(taskDurationSeconds, now + 120_000)}`;
+}
+
+export async function showPrePhaseNotification(
+  taskDurationSeconds: number | null,
+  now = Date.now(),
+): Promise<void> {
+  const { status } = await Notifications.requestPermissionsAsync();
+  if (status !== 'granted') return;
+  await cancelPrePhaseNotification();
+  const token = ++prePhaseToken;
+  const id = await Notifications.scheduleNotificationAsync({
+    content: {
+      title: '2-min warm-up started ⏱️',
+      body: formatPrePhaseBody(taskDurationSeconds, now),
+      sticky: true,
+      autoDismiss: false,
+      data: { type: 'pre_phase' },
+    },
+    trigger: null,
+  });
+  if (prePhaseToken === token) {
+    activePrePhaseNotificationId = id;
+  } else {
+    // A newer cancel/show ran while we were awaiting — dismiss this stale notification
+    await Notifications.dismissNotificationAsync(id);
+  }
+}
+
+export async function cancelPrePhaseNotification(): Promise<void> {
+  prePhaseToken++;
+  if (activePrePhaseNotificationId === null) return;
+  await Notifications.dismissNotificationAsync(activePrePhaseNotificationId);
+  activePrePhaseNotificationId = null;
+}
 
 export async function cancelSessionNotification(): Promise<void> {
   if (activeNotificationId === null) return;

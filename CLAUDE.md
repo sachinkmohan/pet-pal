@@ -35,12 +35,12 @@ app/
   feed.tsx             # Feed screen; pushed from Home button
   settings.tsx         # Settings screen (pet renaming); pushed from Home header gear icon
   (tabs)/
-    _layout.tsx        # Bottom tab navigator (Home / Quests / Step Away / Stats / Journey)
+    _layout.tsx        # Bottom tab navigator (Home / Quests / Step Away / Stats / Tasks)
     index.tsx          # Home screen (gear icon → /settings)
     quests.tsx         # Daily quest screen — quest card, claim flow, coin balance, countdown
-    focus.tsx          # "Step Away" screen (formerly Focus)
+    focus.tsx          # "Step Away" screen (formerly Focus); extended with 2-min pre-phase for task sessions
     stats.tsx          # Stats screen
-    journey.tsx        # Pet evolution timeline
+    tasks.tsx          # Tasks screen — inline duration detection, carry-over, 7-day chart, coin reward on check-off
   modal.tsx
 ```
 
@@ -65,8 +65,10 @@ src/
                             # startSession(), timerComplete(), giveUp(), dispose()
                             # No grace period — replaced by honest-reporting ("Save" / "Don't save — I cheated")
     NotificationService.ts  # showSessionNotification(petName, durationSeconds) + cancelSessionNotification()
-                            # Shows persistent "Session ends at X:XX PM" notification on session start
-                            # No completion notification — end time in start notification is sufficient
+                            # showPrePhaseNotification(taskDurationSeconds) — sticky warm-up notification; tracks ID
+                            # cancelPrePhaseNotification() — call at all three session-start paths in focus.tsx
+                            # formatEndTime, formatCheckpointBody, formatPrePhaseBody — pure, TDD'd
+                            # Session notification cancelled only on give-up or natural timer completion (not screen blur)
     FeedService.ts          # Pure TS feed logic (no RN deps): getFeedPetStage, getFeedPetSize,
                             # canFeed, timeUntilNextFeed, feedsToNextStage, feedProgressPercent
     StreakService.ts        # calculateStreak(StreakInput): StreakResult — pure, no storage deps
@@ -83,9 +85,15 @@ src/
                             # claimQuestReward() → { newCoinTotal, success }, getCoins()
                             # recordQuestEvent called after updateStreakAfterSession() in focus.tsx
                             # and after 3rd tap in feed.tsx
+    TaskService.ts          # Pure task logic (no storage/RN deps) — fully TDD'd:
+                            # parseDuration, stripDuration, createTask, shouldCarryOver, filterForNewDay
+                            # buildRolling7Days(completions, now) → number[7] (today = index 6)
+                            # processTaskInput(newText, existingDuration) → { displayText, durationSeconds }
+                            # calculateTaskCoins(durationSeconds) → max(5, round(durationSeconds / 300))
+                            # adjustSessionDuration(durationSeconds, overdueMs) → max(5, duration - round(overdueMs/1000))
   storage/
     recentDurations.ts      # addRecentDuration(existing, duration) — deduplicates, caps at 5
-                            # Used by Step Away screen quick-start chips
+                            # Used by Step Away screen quick-start chips; skipped for task sessions
   utils/
     petName.ts              # normalizePetName(input, fallback) — trim, cap 12 chars, fallback if empty
                             # Used by onboarding + settings to validate pet names before saving
@@ -131,8 +139,12 @@ Domain components built so far (use these rather than re-implementing inline):
 - **Mood:** Calculated in real-time via `calculateMood()` in `src/services/MoodService.ts`. Call after every session completion and every feed. Pass `screenTimeHours` once `ScreenTimeService` is wired (Phase 6).
 - **Evolution:** Driven by `totalSessionsEver` (never resets). Thresholds: 0/10/25/50/100/200 sessions.
 - **Focus session honesty:** No cheat detection. On session complete, user chooses "Save session" or "Don't save — I cheated". Data only written on explicit save.
-- **Session notification:** Body format: `"25 min · Ends at 2:30 PM"`. Persists in tray after session completes (user dismisses manually). Cancelled only on give-up or screen blur.
-- **Recent durations:** Last 5 unique saved session durations in `STORAGE_KEYS.RECENT_DURATIONS`. Shown as quick-start chips on Focus screen; hidden on fresh install.
+- **Session notification:** Body format: `"25 min · Ends at 2:30 PM"`. Cancelled on give-up or natural timer completion. NOT cancelled on screen blur or navigation — notification persists so user can return via tap.
+- **Pre-phase notification:** Sticky `"2-min warm-up started ⏱️"` fired when task pre-phase starts. Tracks ID in `NotificationService`. Cancelled at all three session-start paths: `CircularCountdown.onComplete`, AppState listener, `__DEV__` skip button.
+- **Recent durations:** Last 5 unique saved session durations in `STORAGE_KEYS.RECENT_DURATIONS`. Shown as quick-start chips on Focus screen; hidden on fresh install. Task sessions are excluded — they don't populate recents.
+- **Tasks:** One-way check-off (no unchecking). Coin reward on check-off: `calculateTaskCoins(durationSeconds)`. Task sessions launched via `router.push({ pathname: '/(tabs)/focus', params: { taskName, durationSeconds } })`. Storage: `POCHI_TASKS`, `POCHI_TASKS_LAST_DATE`, `POCHI_TASK_COMPLETIONS`, `POCHI_TASKS_ONBOARDING_DONE`.
+- **2-minute pre-phase:** Task sessions start with a 2-min `CircularCountdown`. AppState listener auto-transitions when app reopened after 2+ min (`prePhaseEndTimeRef` tracks wall-clock end time). `adjustSessionDuration` subtracts elapsed overdue time so countdown shows true remaining time. Always use `key` props on `CircularCountdown` (`"pre-phase"`, `"task-session"`, `"regular-session"`) to force unmount/remount between phases.
+- **`CircularCountdown` key rule:** Always provide a unique `key` when multiple `CircularCountdown` instances can appear at the same tree position. Without keys, React reconciles them as the same instance and the `useEffect([], [])` interval never re-runs.
 - **Duration picker:** Focus screen has a `Manual` toggle switch (`STORAGE_KEYS.MANUAL_DURATION_MODE`). When ON, replaces `CircularSlider` with `DurationPicker` (HH:MM snap-scroll). Toggle state persisted — restored on app reopen. Max duration: 5h 55m (355 min).
 - **Duration formatting:** Always use `formatDuration(minutes)` from `src/utils/durationPicker.ts` for displaying stat values. Output: `"25m"` / `"1h"` / `"1h 20m"`.
 - **Screen time:** Optional — app fully functional without `USAGE_STATS_ENABLED`. Never penalise mood if disabled.
